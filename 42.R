@@ -34,10 +34,13 @@ project_time <- aggregate(Hours ~ monthyear +  Service.Type + Billable + Form.Ty
 project_time <- project_time[project_time$Billable %in% 0,]
 project_time <- project_time[order(project_time$monthyear),] #sort
 agg_project <- aggregate(Hours ~ monthyear + Service.Type + Form.Type, data = project_time, FUN = sum) #aggregate by type
+agg_project$header <- paste(agg_project$Form.Type, agg_project$Service.Type, sep = " ")
+groups <- c("10-K Detail Tagging","10-Q Detail Tagging","10-K Full Review","10-Q Full Review","10-K Standard Import","10-Q Standard Import","10-K Full Service Standard Import","10-Q Full Service Standard Import","10-K Maintenance","10-Q Maintenance","K-K Roll Forward","Q-K Roll Forward","Q-Q Roll Forward","K-Q Roll Forward","10-K Full Service Roll Forward","10-Q Full Service Roll Forward")
+agg_project[!(agg_project$header %in% groups),]$header <- "Other Services"
 
 #cast wide to prepare for rbind
-project_hours <- dcast(agg_project, Service.Type + Form.Type ~ monthyear, sum, value.var = "Hours")
-
+project_hours <- dcast(agg_project, header ~ monthyear, sum, value.var = "Hours")
+project_hours <- project_hours[match(c(groups, "Other Services"),project_hours$header),]
 #////////////////////////////////
 # scheduled services by month
 #////////////////////////////////
