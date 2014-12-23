@@ -1,6 +1,12 @@
 #the answer to life, the universe and everything
+#dependencies:
+#timelog_for_r
+#subcloud_for_r
+#role_dates
+#accounts_with_year_end
 library(plyr)
 library(reshape2)
+library(xlsx)
 
 setwd("C:/R/workspace/shared")
 source("import_functions.r")
@@ -74,3 +80,19 @@ time_by_role <- aggregate(Hours ~ monthyear +  role , data = all_time, FUN = sum
 time_by_role <- time_by_role[order(time_by_role$monthyear),]
 time_by_role <- dcast(time_by_role, role ~ monthyear, sum, value.var = "Hours") 
 time_by_role <- time_by_role[time_by_role$role %in% c("PSM", "PSS", "Sr PSM"),]
+
+#////////////////////////////////
+# Total client time by role
+#////////////////////////////////
+
+#rbind results
+#test <- rbind.fill(billable_hours, project_hours, scheduled_services, count_by_role, time_by_role)
+
+#****************** write results to file
+setwd("C:/R/workspace/42/output")
+write.xlsx(x = billable_hours, file = "42_data.xlsx",sheetName = "billable_hours", row.names = FALSE)
+write.xlsx(x = project_hours, file = "42_data.xlsx",sheetName = "project_hours", row.names = FALSE, append = TRUE)
+write.xlsx(x = scheduled_services, file = "42_data.xlsx",sheetName = "scheduled_services", row.names = FALSE, append = TRUE)
+write.xlsx(x = count_by_role, file = "42_data.xlsx",sheetName = "count_by_role", row.names = FALSE, append = TRUE)
+write.xlsx(x = time_by_role, file = "42_data.xlsx",sheetName = "time_by_role", row.names = FALSE, append = TRUE)
+
