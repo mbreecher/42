@@ -13,8 +13,8 @@ source("transformations.r")
 setwd("C:/R/workspace/shared")
 source("monthly_time.R")
 
-collapsed_weekly <- timelog_with_status()
-billable <- aggregate(Hours ~ monthyear +  xbrl_status + Billable + form_type, data = collapsed_weekly, FUN = sum)
+collapsed_monthly <- timelog_with_status()
+billable <- aggregate(Hours ~ monthyear +  xbrl_status + Billable + form_type, data = collapsed_monthly, FUN = sum)
 billable <- billable[billable$Billable %in% 1,]
 billable <- billable[order(billable$monthyear),] #sort
 agg_billable <- aggregate(Hours ~ monthyear + xbrl_status + form_type, data = billable, FUN = sum) #aggregate by type
@@ -56,3 +56,21 @@ scheduled_by_month[!scheduled_by_month$Service.Name %in% approved_groups,]$Servi
 scheduled_by_month <- scheduled_by_month[order(scheduled_by_month$monthyear),]
 #cast wide to prepare for rbind
 scheduled_services <- dcast(scheduled_by_month, Service.Name ~ monthyear, sum, value.var = "Services.ID")
+
+#////////////////////////////////
+# Full Time Employees - count
+#////////////////////////////////
+all_time <- aggregate(Hours ~ monthyear +  role + User , data = collapsed_monthly, FUN = sum)
+all_time[all_time$User %in% "Jane Cavanaugh" & all_time$monthyear %in% c("14-09", "14-10", "14-11"),]$role <- "PSS"
+#all_time[all_time$User %in% "Alissa Clausen",]$role <- "PSS"
+count_by_role <- aggregate(Hours ~ monthyear + User + role , data = all_time, FUN = sum)
+count_by_role <- ddply(count_by_role, .(monthyear, role), summarise, count = length(unique(User)))
+count_by_role <- dcast(count_by_role, role ~ monthyear, sum, value.var = "count")
+
+#////////////////////////////////
+# Total client time by role
+#////////////////////////////////
+time_by_role <- aggregate(Hours ~ monthyear +  role , data = all_time, FUN = sum)
+time_by_role <- time_by_role[order(time_by_role$monthyear),]
+time_by_role <- dcast(time_by_role, role ~ monthyear, sum, value.var = "Hours") 
+time_by_role <- time_by_role[time_by_role$role %in% c("PSM", "PSS", "Sr PSM"),]
