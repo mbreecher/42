@@ -4,6 +4,8 @@
 #subcloud_for_r
 #role_dates
 #accounts_with_year_end
+#contracts_for_pshistory
+#hierarchy
 library(plyr)
 library(reshape2)
 library(xlsx)
@@ -19,7 +21,7 @@ source("transformations.r")
 setwd("C:/R/workspace/shared")
 source("monthly_time.R")
 
-collapsed_monthly <- timelog_with_status()
+collapsed_monthly <- timelog_with_status() #~12 minutes
 billable <- aggregate(Hours ~ monthyear +  xbrl_status + Billable + form_type, data = collapsed_monthly, FUN = sum)
 billable <- billable[billable$Billable %in% 1,]
 billable <- billable[order(billable$monthyear),] #sort
@@ -32,11 +34,7 @@ billable_hours <- dcast(agg_billable, xbrl_status + form_type ~ monthyear, sum, 
 # Flat Fee Hours by service level
 #////////////////////////////////
 
-# setwd("C:/R/workspace/shared")
-# source("monthly_time.R")
-# 
-# collapsed_weekly <- timelog_with_status()
-project_time <- aggregate(Hours ~ monthyear +  Service.Type + Billable + Form.Type, data = collapsed_weekly, FUN = sum)
+project_time <- aggregate(Hours ~ monthyear +  Service.Type + Billable + Form.Type, data = collapsed_monthly, FUN = sum)
 project_time <- project_time[project_time$Billable %in% 0,]
 project_time <- project_time[order(project_time$monthyear),] #sort
 agg_project <- aggregate(Hours ~ monthyear + Service.Type + Form.Type, data = project_time, FUN = sum) #aggregate by type
@@ -51,7 +49,10 @@ project_hours <- project_hours[match(c(groups, "Other Services"),project_hours$h
 # scheduled services by month
 #////////////////////////////////
 
-services <- import_services()
+
+hierarchy <- import_hierarchy() #for some reason, not taking when imported within function
+services <- import_services(output = 'expanded')
+
 services <- services[services$filing.estimate >= "2013-06-30",]
 services$monthyear <- format(services$filing.estimate, format = "%y-%m")
 
@@ -82,11 +83,43 @@ time_by_role <- dcast(time_by_role, role ~ monthyear, sum, value.var = "Hours")
 time_by_role <- time_by_role[time_by_role$role %in% c("PSM", "PSS", "Sr PSM"),]
 
 #////////////////////////////////
-# Total client time by role
+# xbrl customers at month-end
+#////////////////////////////////
+xbrl_customers <- ddply(services[!is.na(services$contract.start.date),], .var = c("Account.Name"), .fun = function(x){
+  if(!is.na(unique(x$contract.start.date))){
+    start = unique(x$contract.start.date)
+  }else{
+    start = min(services[!is.na(services$contract.start.date),]$contract.start.date)
+  } #if na, use earliest date
+  if(length(unique(x[!is.na(x$Churn.Date),]$Churn.Date)) > 0 ){
+    end = min(unique(x[!is.na(x$Churn.Date),]$Churn.Date))
+  }else{
+    end = seq(Sys.Date() - as.POSIXlt(Sys.Date())$mday +1, length = 2, by = "1 month")[2]
+  } 
+  result <- c()
+  if(is.na(start) | is.na(end)){browser()}
+  if(start < end){
+    for(date in format(seq(from = as.Date(start) - as.POSIXlt(start)$mday + 1 , to = as.Date(end) - as.POSIXlt(end)$mday, by = "1 months"), format = "%y-%m")){
+      result = rbind(result, data.frame(period = date, is_customer = 1))  
+    }  
+  }
+  result
+})
+
+wide_xbrl_customers <- dcast(xbrl_customers, Account.Name ~ period, value.var = "is_customer")
+wide_xbrl_customers[is.na(wide_xbrl_customers)] <- 0
+
+#////////////////////////////////
+# Total # of XBRL registrants
+# ps history number
 #////////////////////////////////
 
-#rbind results
-#test <- rbind.fill(billable_hours, project_hours, scheduled_services, count_by_role, time_by_role)
+#////////////////////////////////
+# Net discounted sales price
+#////////////////////////////////
+collapsed_opps <- collapsed_opps()
+
+
 
 #****************** write results to file
 setwd("C:/R/workspace/42/output")
@@ -96,3 +129,5 @@ write.xlsx(x = scheduled_services, file = "42_data.xlsx",sheetName = "scheduled_
 write.xlsx(x = count_by_role, file = "42_data.xlsx",sheetName = "count_by_role", row.names = FALSE, append = TRUE)
 write.xlsx(x = time_by_role, file = "42_data.xlsx",sheetName = "time_by_role", row.names = FALSE, append = TRUE)
 
+#rbind results
+#test <- rbind.fill(billable_hours, project_hours, scheduled_services, count_by_role, time_by_role)
