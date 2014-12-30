@@ -189,6 +189,8 @@ write.xlsx(x = time_by_role, file = "42_data.xlsx",sheetName = "time_by_role", r
 write.xlsx(x = wide_xbrl_customers, file = "42_data.xlsx",sheetName = "xbrl_customers", row.names = FALSE, append = TRUE)
 write.xlsx(x = sales_info_wide, file = "42_data.xlsx",sheetName = "net_sales", row.names = FALSE, append = TRUE)
 write.xlsx(x = discount_groups_wide, file = "42_data.xlsx",sheetName = "services by discount", row.names = FALSE, append = TRUE)
+write.xlsx(x = full_discount_wide, file = "42_data.xlsx",sheetName = "Full discount", row.names = FALSE, append = TRUE)
+write.xlsx(x = discount_20_to_99_wide, file = "42_data.xlsx",sheetName = "20-99 discount", row.names = FALSE, append = TRUE)
 
 #rbind results
 #test <- rbind.fill(billable_hours, project_hours, scheduled_services, count_by_role, time_by_role)
