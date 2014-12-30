@@ -20,6 +20,8 @@ source("transformations.r")
 
 setwd("C:/R/workspace/shared")
 source("monthly_time.R")
+setwd("C:/R/workspace/42")
+source("helpers.R")
 
 collapsed_monthly <- timelog_with_status() #~12 minutes
 billable <- aggregate(Hours ~ monthyear +  xbrl_status + Billable + form_type, data = collapsed_monthly, FUN = sum)
@@ -29,7 +31,7 @@ agg_billable <- aggregate(Hours ~ monthyear + xbrl_status + form_type, data = bi
 
 #cast wide to prepare for rbind
 billable_hours <- dcast(agg_billable, xbrl_status + form_type ~ monthyear, sum, value.var = "Hours")
-
+names(billable_hours) <- monthyear_to_written(names(billable_hours))
 #////////////////////////////////
 # Flat Fee Hours by service level
 #////////////////////////////////
@@ -43,10 +45,11 @@ project_time[!(project_time$header %in% groups),]$header <- "Other Services"
 #cast wide to prepare for rbind
 project_hours <- dcast(project_time, header ~ monthyear, sum, value.var = "Hours")
 project_hours <- project_hours[match(c(groups, "Other Services"),project_hours$header),]
+names(project_hours) <- monthyear_to_written(names(project_hours))
+project_hours[is.na(project_hours)] <- ""
 #////////////////////////////////
 # scheduled services by month
 #////////////////////////////////
-
 
 hierarchy <- import_hierarchy() #for some reason, not taking when imported within function
 services <- import_services(output = 'expanded')
@@ -61,6 +64,7 @@ scheduled_by_month[!scheduled_by_month$Service.Name %in% approved_groups,]$Servi
 scheduled_by_month <- scheduled_by_month[order(scheduled_by_month$monthyear),]
 #cast wide to prepare for rbind
 scheduled_services <- dcast(scheduled_by_month, Service.Name ~ monthyear, sum, value.var = "Services.ID")
+names(scheduled_services) <- monthyear_to_written(names(scheduled_services))
 
 #////////////////////////////////
 # Full Time Employees - count
@@ -71,6 +75,7 @@ all_time[all_time$User %in% "Jane Cavanaugh" & all_time$monthyear %in% c("14-09"
 count_by_role <- aggregate(Hours ~ monthyear + User + role , data = all_time, FUN = sum)
 count_by_role <- ddply(count_by_role, .(monthyear, role), summarise, count = length(unique(User)))
 count_by_role <- dcast(count_by_role, role ~ monthyear, sum, value.var = "count")
+names(count_by_role) <- monthyear_to_written(names(count_by_role))
 
 #////////////////////////////////
 # Total client time by role
@@ -79,6 +84,7 @@ time_by_role <- aggregate(Hours ~ monthyear +  role , data = all_time, FUN = sum
 time_by_role <- time_by_role[order(time_by_role$monthyear),]
 time_by_role <- dcast(time_by_role, role ~ monthyear, sum, value.var = "Hours") 
 time_by_role <- time_by_role[time_by_role$role %in% c("PSM", "PSS", "Sr PSM"),]
+names(time_by_role) <- monthyear_to_written(names(time_by_role))
 
 #////////////////////////////////
 # xbrl customers at month-end
@@ -106,6 +112,9 @@ xbrl_customers <- ddply(services[!is.na(services$contract.start.date),], .var = 
 
 wide_xbrl_customers <- dcast(xbrl_customers, Account.Name ~ period, value.var = "is_customer")
 wide_xbrl_customers[is.na(wide_xbrl_customers)] <- 0
+xbrl_customer_count <- colSums(wide_xbrl_customers[,-1])
+xbrl_customer_count <- xbrl_customer_count[order(names(xbrl_customer_count))]
+names(xbrl_customer_count) <- monthyear_to_written(names(xbrl_customer_count))
 
 #////////////////////////////////
 # Total # of XBRL registrants
@@ -158,6 +167,7 @@ discount_groups <- discount_groups[order(discount_groups$monthyear),]
 
 #cast wide to prepare for rbind
 discount_groups_wide <- dcast(discount_groups, discount.bucket ~ monthyear, sum, value.var = "Services.ID")
+names(discount_groups_wide) <- monthyear_to_written(names(discount_groups_wide))
 
 #////////////////////////////////
 # Discounted 100% by type
@@ -168,6 +178,7 @@ full_discount <- full_discount[order(full_discount$monthyear),]
 
 #cast wide to prepare for rbind
 full_discount_wide <- dcast(full_discount, Service.Type ~ monthyear, sum, value.var = "Services.ID")
+names(full_discount_wide) <- monthyear_to_written(names(full_discount_wide))
 
 #////////////////////////////////
 # Discounted 20% - 99% by type
@@ -178,6 +189,7 @@ discount_20_to_99 <- discount_20_to_99[order(discount_20_to_99$monthyear),]
 
 #cast wide to prepare for rbind
 discount_20_to_99_wide <- dcast(discount_20_to_99, Service.Type ~ monthyear, sum, value.var = "Services.ID")
+names(discount_20_to_99_wide) <- monthyear_to_written(names(discount_20_to_99_wide))
 
 #****************** write results to file
 setwd("C:/R/workspace/42/output")
@@ -186,7 +198,7 @@ write.xlsx(x = project_hours, file = "42_data.xlsx",sheetName = "project_hours",
 write.xlsx(x = scheduled_services, file = "42_data.xlsx",sheetName = "scheduled_services", row.names = FALSE, append = TRUE)
 write.xlsx(x = count_by_role, file = "42_data.xlsx",sheetName = "count_by_role", row.names = FALSE, append = TRUE)
 write.xlsx(x = time_by_role, file = "42_data.xlsx",sheetName = "time_by_role", row.names = FALSE, append = TRUE)
-write.xlsx(x = wide_xbrl_customers, file = "42_data.xlsx",sheetName = "xbrl_customers", row.names = FALSE, append = TRUE)
+write.xlsx(x = xbrl_customer_count, file = "42_data.xlsx",sheetName = "xbrl_customers", row.names = FALSE, append = TRUE)
 write.xlsx(x = sales_info_wide, file = "42_data.xlsx",sheetName = "net_sales", row.names = FALSE, append = TRUE)
 write.xlsx(x = discount_groups_wide, file = "42_data.xlsx",sheetName = "services by discount", row.names = FALSE, append = TRUE)
 write.xlsx(x = full_discount_wide, file = "42_data.xlsx",sheetName = "Full discount", row.names = FALSE, append = TRUE)
