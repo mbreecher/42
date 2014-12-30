@@ -122,6 +122,10 @@ collapsed_opps[collapsed_opps$List.Price %in% 0 | is.na(collapsed_opps$List.Pric
 #make list price sales price if sales price > list
 collapsed_opps[collapsed_opps$List.Price < collapsed_opps$Sales.Price,]$List.Price <- collapsed_opps[collapsed_opps$List.Price < collapsed_opps$Sales.Price,]$Sales.Price
 
+#set discount percentages by item
+collapsed_opps$discount <- 1 #instantiate field with full discount
+collapsed_opps[!collapsed_opps$Sales.Price %in% 0,]$discount <- 1 - (collapsed_opps[!collapsed_opps$Sales.Price %in% 0,]$Sales.Price / collapsed_opps[!collapsed_opps$Sales.Price %in% 0,]$List.Price)
+
 sales_info <- aggregate(Sales.Price ~ monthyear + Service.Type + Form.Type, data = collapsed_opps, FUN = sum)
 sales_info <- sales_info[order(sales_info$monthyear),]
 sales_info$header <- paste(sales_info$Form.Type, sales_info$Service.Type, sep = " ")
@@ -135,8 +139,45 @@ sales_info_wide <- sales_info_wide[match(c(groups, "Other Services"),sales_info_
 #////////////////////////////////
 # Discounted by range
 #////////////////////////////////
+collapsed_opps$discount.bucket <- "100% Discount" #instantiate with full discount
+collapsed_opps[collapsed_opps$discount >= 0 & collapsed_opps$discount <= .01,]$discount.bucket <- "0-1% Discount"
+collapsed_opps[collapsed_opps$discount > .01 & collapsed_opps$discount <= .2,]$discount.bucket <- "1.1%-20% Discount"
+collapsed_opps[collapsed_opps$discount > .2 & collapsed_opps$discount <= .5,]$discount.bucket <- "20.1%-50% Discount"
+collapsed_opps[collapsed_opps$discount > .5 & collapsed_opps$discount <= .75,]$discount.bucket <- "50.1%-75% Discount"
+collapsed_opps[collapsed_opps$discount > .75 & collapsed_opps$discount < 1,]$discount.bucket <- "75.1%-99% Discount"
 
+# QA check
+# for(each in unique(collapsed_opps$discount.bucket)){
+#   print(each)
+#   print(min(collapsed_opps[collapsed_opps$discount.bucket %in% each,]$discount))
+#   print(max(collapsed_opps[collapsed_opps$discount.bucket %in% each,]$discount))
+# }
 
+discount_groups <- aggregate(Services.ID ~ monthyear + discount.bucket, data = collapsed_opps, FUN = length)
+discount_groups <- discount_groups[order(discount_groups$monthyear),]
+
+#cast wide to prepare for rbind
+discount_groups_wide <- dcast(discount_groups, discount.bucket ~ monthyear, sum, value.var = "Services.ID")
+
+#////////////////////////////////
+# Discounted 100% by type
+#////////////////////////////////
+
+full_discount <- aggregate(Services.ID ~ monthyear + Service.Type, data = collapsed_opps[collapsed_opps$discount %in% 1,], FUN = length)
+full_discount <- full_discount[order(full_discount$monthyear),]
+
+#cast wide to prepare for rbind
+full_discount_wide <- dcast(full_discount, Service.Type ~ monthyear, sum, value.var = "Services.ID")
+
+#////////////////////////////////
+# Discounted 20% - 99% by type
+#////////////////////////////////
+
+discount_20_to_99 <- aggregate(Services.ID ~ monthyear + Service.Type, data = collapsed_opps[collapsed_opps$discount >.2 &  collapsed_opps$discount < 1,], FUN = length)
+discount_20_to_99 <- discount_20_to_99[order(discount_20_to_99$monthyear),]
+
+#cast wide to prepare for rbind
+discount_20_to_99_wide <- dcast(discount_20_to_99, Service.Type ~ monthyear, sum, value.var = "Services.ID")
 
 #****************** write results to file
 setwd("C:/R/workspace/42/output")
@@ -147,6 +188,7 @@ write.xlsx(x = count_by_role, file = "42_data.xlsx",sheetName = "count_by_role",
 write.xlsx(x = time_by_role, file = "42_data.xlsx",sheetName = "time_by_role", row.names = FALSE, append = TRUE)
 write.xlsx(x = wide_xbrl_customers, file = "42_data.xlsx",sheetName = "xbrl_customers", row.names = FALSE, append = TRUE)
 write.xlsx(x = sales_info_wide, file = "42_data.xlsx",sheetName = "net_sales", row.names = FALSE, append = TRUE)
+write.xlsx(x = discount_groups_wide, file = "42_data.xlsx",sheetName = "services by discount", row.names = FALSE, append = TRUE)
 
 #rbind results
 #test <- rbind.fill(billable_hours, project_hours, scheduled_services, count_by_role, time_by_role)
