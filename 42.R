@@ -115,6 +115,7 @@ wide_xbrl_customers[is.na(wide_xbrl_customers)] <- 0
 xbrl_customer_count <- colSums(wide_xbrl_customers[,-1])
 xbrl_customer_count <- xbrl_customer_count[order(names(xbrl_customer_count))]
 names(xbrl_customer_count) <- monthyear_to_written(names(xbrl_customer_count))
+xbrl_customer_count <- t(xbrl_customer_count)
 
 #////////////////////////////////
 # Total # of XBRL registrants
