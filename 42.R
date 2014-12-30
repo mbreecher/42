@@ -34,16 +34,14 @@ billable_hours <- dcast(agg_billable, xbrl_status + form_type ~ monthyear, sum, 
 # Flat Fee Hours by service level
 #////////////////////////////////
 
-project_time <- aggregate(Hours ~ monthyear +  Service.Type + Billable + Form.Type, data = collapsed_monthly, FUN = sum)
-project_time <- project_time[project_time$Billable %in% 0,]
+project_time <- aggregate(Hours ~ monthyear +  Service.Type + Form.Type, data = collapsed_monthly[collapsed_monthly$Billable %in% 0,], FUN = sum)
 project_time <- project_time[order(project_time$monthyear),] #sort
-agg_project <- aggregate(Hours ~ monthyear + Service.Type + Form.Type, data = project_time, FUN = sum) #aggregate by type
-agg_project$header <- paste(agg_project$Form.Type, agg_project$Service.Type, sep = " ")
+project_time$header <- paste(project_time$Form.Type, project_time$Service.Type, sep = " ")
 groups <- c("10-K Detail Tagging","10-Q Detail Tagging","10-K Full Review","10-Q Full Review","10-K Standard Import","10-Q Standard Import","10-K Full Service Standard Import","10-Q Full Service Standard Import","10-K Maintenance","10-Q Maintenance","K-K Roll Forward","Q-K Roll Forward","Q-Q Roll Forward","K-Q Roll Forward","10-K Full Service Roll Forward","10-Q Full Service Roll Forward")
-agg_project[!(agg_project$header %in% groups),]$header <- "Other Services"
+project_time[!(project_time$header %in% groups),]$header <- "Other Services"
 
 #cast wide to prepare for rbind
-project_hours <- dcast(agg_project, header ~ monthyear, sum, value.var = "Hours")
+project_hours <- dcast(project_time, header ~ monthyear, sum, value.var = "Hours")
 project_hours <- project_hours[match(c(groups, "Other Services"),project_hours$header),]
 #////////////////////////////////
 # scheduled services by month
@@ -117,7 +115,26 @@ wide_xbrl_customers[is.na(wide_xbrl_customers)] <- 0
 #////////////////////////////////
 # Net discounted sales price
 #////////////////////////////////
-collapsed_opps <- collapsed_opps()
+collapsed_opps <- collapsed_opportunities() # ~2.75 minutes
+
+#make list price sales price if list price == 0 or na
+collapsed_opps[collapsed_opps$List.Price %in% 0 | is.na(collapsed_opps$List.Price),]$List.Price <- collapsed_opps[collapsed_opps$List.Price %in% 0  | is.na(collapsed_opps$List.Price),]$Sales.Price
+#make list price sales price if sales price > list
+collapsed_opps[collapsed_opps$List.Price < collapsed_opps$Sales.Price,]$List.Price <- collapsed_opps[collapsed_opps$List.Price < collapsed_opps$Sales.Price,]$Sales.Price
+
+sales_info <- aggregate(Sales.Price ~ monthyear + Service.Type + Form.Type, data = collapsed_opps, FUN = sum)
+sales_info <- sales_info[order(sales_info$monthyear),]
+sales_info$header <- paste(sales_info$Form.Type, sales_info$Service.Type, sep = " ")
+groups <- c("10-K Detail Tagging","10-Q Detail Tagging","10-K Full Review","10-Q Full Review","10-K Standard Import","10-Q Standard Import","10-K Full Service Standard Import","10-Q Full Service Standard Import","10-K Maintenance","10-Q Maintenance","K-K Roll Forward","Q-K Roll Forward","Q-Q Roll Forward","K-Q Roll Forward","10-K Full Service Roll Forward","10-Q Full Service Roll Forward")
+sales_info[!(sales_info$header %in% groups),]$header <- "Other Services"
+
+#cast wide to prepare for rbind
+sales_info_wide <- dcast(sales_info, header ~ monthyear, sum, value.var = "Sales.Price")
+sales_info_wide <- sales_info_wide[match(c(groups, "Other Services"),sales_info_wide$header),]
+
+#////////////////////////////////
+# Discounted by range
+#////////////////////////////////
 
 
 
@@ -128,6 +145,8 @@ write.xlsx(x = project_hours, file = "42_data.xlsx",sheetName = "project_hours",
 write.xlsx(x = scheduled_services, file = "42_data.xlsx",sheetName = "scheduled_services", row.names = FALSE, append = TRUE)
 write.xlsx(x = count_by_role, file = "42_data.xlsx",sheetName = "count_by_role", row.names = FALSE, append = TRUE)
 write.xlsx(x = time_by_role, file = "42_data.xlsx",sheetName = "time_by_role", row.names = FALSE, append = TRUE)
+write.xlsx(x = wide_xbrl_customers, file = "42_data.xlsx",sheetName = "xbrl_customers", row.names = FALSE, append = TRUE)
+write.xlsx(x = sales_info_wide, file = "42_data.xlsx",sheetName = "net_sales", row.names = FALSE, append = TRUE)
 
 #rbind results
 #test <- rbind.fill(billable_hours, project_hours, scheduled_services, count_by_role, time_by_role)
