@@ -146,6 +146,8 @@ sales_info[!(sales_info$header %in% groups),]$header <- "Other Services"
 #cast wide to prepare for rbind
 sales_info_wide <- dcast(sales_info, header ~ monthyear, sum, value.var = "Sales.Price")
 sales_info_wide <- sales_info_wide[match(c(groups, "Other Services"),sales_info_wide$header),]
+row.names(sales_info_wide) <- c(groups, "Other Services") #use rownames for service names rather than column
+sales_info_wide <- sales_info_wide[,-1] #remove name column
 
 #////////////////////////////////
 # Discounted by range
@@ -201,7 +203,7 @@ write.xlsx(x = scheduled_services, file = "42_data.xlsx",sheetName = "scheduled_
 write.xlsx(x = count_by_role, file = "42_data.xlsx",sheetName = "count_by_role", row.names = FALSE, append = TRUE)
 write.xlsx(x = time_by_role, file = "42_data.xlsx",sheetName = "time_by_role", row.names = FALSE, append = TRUE)
 write.xlsx(x = xbrl_customer_count, file = "42_data.xlsx",sheetName = "xbrl_customers", row.names = TRUE, append = TRUE)
-write.xlsx(x = sales_info_wide, file = "42_data.xlsx",sheetName = "net_sales", row.names = FALSE, append = TRUE)
+write.xlsx(x = sales_info_wide, file = "42_data.xlsx",sheetName = "net_sales", row.names = TRUE, append = TRUE)
 write.xlsx(x = discount_groups_wide, file = "42_data.xlsx",sheetName = "services by discount", row.names = FALSE, append = TRUE)
 write.xlsx(x = full_discount_wide, file = "42_data.xlsx",sheetName = "Full discount", row.names = FALSE, append = TRUE)
 write.xlsx(x = discount_20_to_99_wide, file = "42_data.xlsx",sheetName = "20-99 discount", row.names = FALSE, append = TRUE)
