@@ -182,6 +182,8 @@ discount_groups <- discount_groups[order(discount_groups$monthyear),]
 #cast wide to prepare for rbind
 discount_groups_wide <- dcast(discount_groups, discount.bucket ~ monthyear, sum, value.var = "Services.ID")
 names(discount_groups_wide) <- monthyear_to_written(names(discount_groups_wide))
+name_order <- c("100% Discount","75.1%-99% Discount","50.1%-75% Discount","20.1%-50% Discount","1.1%-20% Discount","0-1% Discount")
+discount_groups_wide <- discount_groups_wide[match(name_order, discount_groups_wide$discount.bucket),]
 
 #////////////////////////////////
 # Discounted 100% by type
