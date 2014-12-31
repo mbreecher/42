@@ -46,7 +46,10 @@ project_time[!(project_time$header %in% groups),]$header <- "Other Services"
 project_hours <- dcast(project_time, header ~ monthyear, sum, value.var = "Hours")
 project_hours <- project_hours[match(c(groups, "Other Services"),project_hours$header),]
 names(project_hours) <- monthyear_to_written(names(project_hours))
-project_hours[is.na(project_hours)] <- ""
+row.names(project_hours) <- c(groups, "Other Services") #use rownames for service names rather than column
+project_hours <- project_hours[,-1] #remove name column
+project_hours[is.na(project_hours)] <- 0
+
 #////////////////////////////////
 # scheduled services by month
 #////////////////////////////////
@@ -200,7 +203,7 @@ names(discount_20_to_99_wide) <- monthyear_to_written(names(discount_20_to_99_wi
 #****************** write results to file
 setwd("C:/R/workspace/42/output")
 write.xlsx(x = billable_hours, file = "42_data.xlsx",sheetName = "billable_hours", row.names = FALSE)
-write.xlsx(x = project_hours, file = "42_data.xlsx",sheetName = "project_hours", row.names = FALSE, append = TRUE)
+write.xlsx(x = project_hours, file = "42_data.xlsx",sheetName = "project_hours", row.names = TRUE, append = TRUE)
 write.xlsx(x = scheduled_services, file = "42_data.xlsx",sheetName = "scheduled_services", row.names = FALSE, append = TRUE)
 write.xlsx(x = count_by_role, file = "42_data.xlsx",sheetName = "count_by_role", row.names = FALSE, append = TRUE)
 write.xlsx(x = time_by_role, file = "42_data.xlsx",sheetName = "time_by_role", row.names = FALSE, append = TRUE)
