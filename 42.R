@@ -116,6 +116,7 @@ xbrl_customer_count <- colSums(wide_xbrl_customers[,-1])
 xbrl_customer_count <- xbrl_customer_count[order(names(xbrl_customer_count))]
 names(xbrl_customer_count) <- monthyear_to_written(names(xbrl_customer_count))
 xbrl_customer_count <- t(xbrl_customer_count)
+row.names(xbrl_customer_count) <- c( "XBRL Customers")
 
 #////////////////////////////////
 # Total # of XBRL registrants
@@ -199,7 +200,7 @@ write.xlsx(x = project_hours, file = "42_data.xlsx",sheetName = "project_hours",
 write.xlsx(x = scheduled_services, file = "42_data.xlsx",sheetName = "scheduled_services", row.names = FALSE, append = TRUE)
 write.xlsx(x = count_by_role, file = "42_data.xlsx",sheetName = "count_by_role", row.names = FALSE, append = TRUE)
 write.xlsx(x = time_by_role, file = "42_data.xlsx",sheetName = "time_by_role", row.names = FALSE, append = TRUE)
-write.xlsx(x = xbrl_customer_count, file = "42_data.xlsx",sheetName = "xbrl_customers", row.names = FALSE, append = TRUE)
+write.xlsx(x = xbrl_customer_count, file = "42_data.xlsx",sheetName = "xbrl_customers", row.names = TRUE, append = TRUE)
 write.xlsx(x = sales_info_wide, file = "42_data.xlsx",sheetName = "net_sales", row.names = FALSE, append = TRUE)
 write.xlsx(x = discount_groups_wide, file = "42_data.xlsx",sheetName = "services by discount", row.names = FALSE, append = TRUE)
 write.xlsx(x = full_discount_wide, file = "42_data.xlsx",sheetName = "Full discount", row.names = FALSE, append = TRUE)
