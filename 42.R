@@ -24,10 +24,8 @@ setwd("C:/R/workspace/42")
 source("helpers.R")
 
 collapsed_monthly <- timelog_with_status() #~12 minutes
-billable <- aggregate(Hours ~ monthyear +  xbrl_status + Billable + form_type, data = collapsed_monthly, FUN = sum)
-billable <- billable[billable$Billable %in% 1,]
-billable <- billable[order(billable$monthyear),] #sort
-agg_billable <- aggregate(Hours ~ monthyear + xbrl_status + form_type, data = billable, FUN = sum) #aggregate by type
+agg_billable <- aggregate(Hours ~ monthyear +  xbrl_status + form_type, data = collapsed_monthly[collapsed_monthly$Billable %in% 1,], FUN = sum)
+agg_billable <- billable[order(agg_billable$monthyear),] #sort
 
 #cast wide to prepare for rbind
 billable_hours <- dcast(agg_billable, xbrl_status + form_type ~ monthyear, sum, value.var = "Hours")
@@ -207,6 +205,18 @@ discount_20_to_99 <- discount_20_to_99[order(discount_20_to_99$monthyear),]
 discount_20_to_99_wide <- dcast(discount_20_to_99, Service.Type ~ monthyear, sum, value.var = "Services.ID")
 names(discount_20_to_99_wide) <- monthyear_to_written(names(discount_20_to_99_wide))
 
+#////////////////////////////////
+# Goodwill Hours used by month
+#////////////////////////////////
+wide_goodwill_used <- dcast(collapsed_monthly[collapsed_monthly$Service %in% c("Goodwill Hours"),],Service ~ monthyear, sum, value.var = "Hours" )
+names(wide_goodwill_used) <- monthyear_to_written(names(wide_goodwill_used))
+
+#////////////////////////////////
+# Goodwill Balance
+#////////////////////////////////
+unique_customers <- unique(services[!is.na(services$Goodwill.Hours.Available),names(services) %in% c("Account.Name","Goodwill.Hours.Available" )])
+goodwill_balance <- data.frame(date = Sys.Date(), goodwill_balance = sum(unique_customers$Goodwill.Hours.Available))
+
 #****************** write results to file
 setwd("C:/R/workspace/42/output")
 write.xlsx(x = billable_hours, file = "42_data.xlsx",sheetName = "billable_hours", row.names = TRUE)
@@ -219,6 +229,8 @@ write.xlsx(x = sales_info_wide, file = "42_data.xlsx",sheetName = "net_sales", r
 write.xlsx(x = discount_groups_wide, file = "42_data.xlsx",sheetName = "services by discount", row.names = FALSE, append = TRUE)
 write.xlsx(x = full_discount_wide, file = "42_data.xlsx",sheetName = "Full discount", row.names = FALSE, append = TRUE)
 write.xlsx(x = discount_20_to_99_wide, file = "42_data.xlsx",sheetName = "20-99 discount", row.names = FALSE, append = TRUE)
+write.xlsx(x = wide_goodwill_used, file = "42_data.xlsx",sheetName = "Goodwill Hours Used", row.names = FALSE, append = TRUE)
+write.xlsx(x = goodwill_balance, file = "42_data.xlsx",sheetName = "Goodwill Balance", row.names = FALSE, append = TRUE)
 
 #rbind results
 #test <- rbind.fill(billable_hours, project_hours, scheduled_services, count_by_role, time_by_role)
