@@ -6,6 +6,7 @@
 #accounts_with_year_end
 #contracts_for_pshistory
 #hierarchy
+start = proc.time() #expect ~16 minutes
 library(plyr)
 library(reshape2)
 library(xlsx)
@@ -65,12 +66,17 @@ services$monthyear <- format(services$filing.estimate, format = "%y-%m")
 
 scheduled_by_month <- aggregate(Services.ID ~ monthyear + Service.Type + Form.Type, data = services, FUN = length)
 scheduled_by_month$Service.Name <- paste(scheduled_by_month$Form.Type, scheduled_by_month$Service.Type, sep = " ")
-approved_groups <- c("10-K Standard Import","10-Q Standard Import","10-K Full Service Standard Import","10-Q Full Service Standard Import","10-K Basic Maintentance","10-Q Basic Maintentance","K-K Roll Forward","Q-K Roll Forward","Q-Q Roll Forward","K-Q Roll Forward","10-K Full Service Roll Forward","10-Q Full Service Roll Forward")
-scheduled_by_month[!scheduled_by_month$Service.Name %in% approved_groups,]$Service.Name <- "Other Services"
+name_order <- c("10-K Standard Import","10-Q Standard Import","10-K Full Service Standard Import","10-Q Full Service Standard Import","10-K Basic Maintentance","10-Q Basic Maintentance","K-K Roll Forward","Q-K Roll Forward","Q-Q Roll Forward","K-Q Roll Forward","10-K Full Service Roll Forward","10-Q Full Service Roll Forward")
+scheduled_by_month[!scheduled_by_month$Service.Name %in% name_order,]$Service.Name <- "Other Services"
 scheduled_by_month <- scheduled_by_month[order(scheduled_by_month$monthyear),]
 #cast wide to prepare for rbind
 scheduled_services <- dcast(scheduled_by_month, Service.Name ~ monthyear, sum, value.var = "Services.ID")
 names(scheduled_services) <- monthyear_to_written(names(scheduled_services))
+scheduled_services <- scheduled_services[match(c(name_order,"Other Services") , scheduled_services$Service.Name),]
+row.names(scheduled_services) <- c(name_order, "Other Services") #use rownames for service names rather than column
+scheduled_services <- scheduled_services[,-1] #remove name column
+scheduled_services[is.na(scheduled_services)] <- 0
+
 
 #////////////////////////////////
 # Full Time Employees - count
@@ -221,7 +227,7 @@ goodwill_balance <- data.frame(date = Sys.Date(), goodwill_balance = sum(unique_
 setwd("C:/R/workspace/42/output")
 write.xlsx(x = billable_hours, file = "42_data.xlsx",sheetName = "billable_hours", row.names = TRUE)
 write.xlsx(x = project_hours, file = "42_data.xlsx",sheetName = "project_hours", row.names = TRUE, append = TRUE)
-write.xlsx(x = scheduled_services, file = "42_data.xlsx",sheetName = "scheduled_services", row.names = FALSE, append = TRUE)
+write.xlsx(x = scheduled_services, file = "42_data.xlsx",sheetName = "scheduled_services", row.names = TRUE, append = TRUE)
 write.xlsx(x = count_by_role, file = "42_data.xlsx",sheetName = "count_by_role", row.names = FALSE, append = TRUE)
 write.xlsx(x = time_by_role, file = "42_data.xlsx",sheetName = "time_by_role", row.names = FALSE, append = TRUE)
 write.xlsx(x = xbrl_customer_count, file = "42_data.xlsx",sheetName = "xbrl_customers", row.names = TRUE, append = TRUE)
@@ -231,6 +237,8 @@ write.xlsx(x = full_discount_wide, file = "42_data.xlsx",sheetName = "Full disco
 write.xlsx(x = discount_20_to_99_wide, file = "42_data.xlsx",sheetName = "20-99 discount", row.names = FALSE, append = TRUE)
 write.xlsx(x = wide_goodwill_used, file = "42_data.xlsx",sheetName = "Goodwill Hours Used", row.names = FALSE, append = TRUE)
 write.xlsx(x = goodwill_balance, file = "42_data.xlsx",sheetName = "Goodwill Balance", row.names = FALSE, append = TRUE)
+
+proc.time() - start
 
 #rbind results
 #test <- rbind.fill(billable_hours, project_hours, scheduled_services, count_by_role, time_by_role)
