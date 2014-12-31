@@ -147,7 +147,9 @@ sales_info[!(sales_info$header %in% groups),]$header <- "Other Services"
 sales_info_wide <- dcast(sales_info, header ~ monthyear, sum, value.var = "Sales.Price")
 sales_info_wide <- sales_info_wide[match(c(groups, "Other Services"),sales_info_wide$header),]
 row.names(sales_info_wide) <- c(groups, "Other Services") #use rownames for service names rather than column
+names(sales_info_wide) <- monthyear_to_written(names(sales_info_wide))
 sales_info_wide <- sales_info_wide[,-1] #remove name column
+sales_info_wide[is.na(sales_info_wide)] <- 0
 
 #////////////////////////////////
 # Discounted by range
