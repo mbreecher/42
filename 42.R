@@ -32,6 +32,11 @@ agg_billable <- aggregate(Hours ~ monthyear + xbrl_status + form_type, data = bi
 #cast wide to prepare for rbind
 billable_hours <- dcast(agg_billable, xbrl_status + form_type ~ monthyear, sum, value.var = "Hours")
 names(billable_hours) <- monthyear_to_written(names(billable_hours))
+row.names(billable_hours) <- paste(test$xbrl_status, test$form_type, sep = " - ")
+name_order <- c("DIY - Q","DIY - K","Basic - Q","Basic - K","Full Service - Q","Full Service - K")
+billable_hours <- billable_hours[match(name_order, row.names(billable_hours)),]
+billable_hours <- billable_hours[,-c(1,2)]
+
 #////////////////////////////////
 # Flat Fee Hours by service level
 #////////////////////////////////
@@ -202,7 +207,7 @@ names(discount_20_to_99_wide) <- monthyear_to_written(names(discount_20_to_99_wi
 
 #****************** write results to file
 setwd("C:/R/workspace/42/output")
-write.xlsx(x = billable_hours, file = "42_data.xlsx",sheetName = "billable_hours", row.names = FALSE)
+write.xlsx(x = billable_hours, file = "42_data.xlsx",sheetName = "billable_hours", row.names = TRUE)
 write.xlsx(x = project_hours, file = "42_data.xlsx",sheetName = "project_hours", row.names = TRUE, append = TRUE)
 write.xlsx(x = scheduled_services, file = "42_data.xlsx",sheetName = "scheduled_services", row.names = FALSE, append = TRUE)
 write.xlsx(x = count_by_role, file = "42_data.xlsx",sheetName = "count_by_role", row.names = FALSE, append = TRUE)
