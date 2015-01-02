@@ -103,34 +103,34 @@ names(time_by_role) <- monthyear_to_written(names(time_by_role))
 #////////////////////////////////
 # xbrl customers at month-end
 #////////////////////////////////
-xbrl_customers <- ddply(services[!is.na(services$contract.start.date),], .var = c("Account.Name"), .fun = function(x){
-  if(!is.na(unique(x$contract.start.date))){
-    start = unique(x$contract.start.date)
-  }else{
-    start = min(services[!is.na(services$contract.start.date),]$contract.start.date)
-  } #if na, use earliest date
-  if(length(unique(x[!is.na(x$Churn.Date),]$Churn.Date)) > 0 ){
-    end = min(unique(x[!is.na(x$Churn.Date),]$Churn.Date))
-  }else{
-    end = seq(Sys.Date() - as.POSIXlt(Sys.Date())$mday +1, length = 2, by = "1 month")[2]
-  } 
-  result <- c()
-  if(is.na(start) | is.na(end)){browser()}
-  if(start < end){
-    for(date in format(seq(from = as.Date(start) - as.POSIXlt(start)$mday + 1 , to = as.Date(end) - as.POSIXlt(end)$mday, by = "1 months"), format = "%y-%m")){
-      result = rbind(result, data.frame(period = date, is_customer = 1))  
-    }  
-  }
-  result
-})
-
-wide_xbrl_customers <- dcast(xbrl_customers, Account.Name ~ period, value.var = "is_customer")
-wide_xbrl_customers[is.na(wide_xbrl_customers)] <- 0
-xbrl_customer_count <- colSums(wide_xbrl_customers[,-1])
-xbrl_customer_count <- xbrl_customer_count[order(names(xbrl_customer_count))]
-names(xbrl_customer_count) <- monthyear_to_written(names(xbrl_customer_count))
-xbrl_customer_count <- t(xbrl_customer_count)
-row.names(xbrl_customer_count) <- c( "XBRL Customers")
+# xbrl_customers <- ddply(services[!is.na(services$contract.start.date),], .var = c("Account.Name"), .fun = function(x){
+#   if(!is.na(unique(x$contract.start.date))){
+#     start = unique(x$contract.start.date)
+#   }else{
+#     start = min(services[!is.na(services$contract.start.date),]$contract.start.date)
+#   } #if na, use earliest date
+#   if(length(unique(x[!is.na(x$Churn.Date),]$Churn.Date)) > 0 ){
+#     end = min(unique(x[!is.na(x$Churn.Date),]$Churn.Date))
+#   }else{
+#     end = seq(Sys.Date() - as.POSIXlt(Sys.Date())$mday +1, length = 2, by = "1 month")[2]
+#   } 
+#   result <- c()
+#   if(is.na(start) | is.na(end)){browser()}
+#   if(start < end){
+#     for(date in format(seq(from = as.Date(start) - as.POSIXlt(start)$mday + 1 , to = as.Date(end) - as.POSIXlt(end)$mday, by = "1 months"), format = "%y-%m")){
+#       result = rbind(result, data.frame(period = date, is_customer = 1))  
+#     }  
+#   }
+#   result
+# })
+# 
+# wide_xbrl_customers <- dcast(xbrl_customers, Account.Name ~ period, value.var = "is_customer")
+# wide_xbrl_customers[is.na(wide_xbrl_customers)] <- 0
+# xbrl_customer_count <- colSums(wide_xbrl_customers[,-1])
+# xbrl_customer_count <- xbrl_customer_count[order(names(xbrl_customer_count))]
+# names(xbrl_customer_count) <- monthyear_to_written(names(xbrl_customer_count))
+# xbrl_customer_count <- t(xbrl_customer_count)
+# row.names(xbrl_customer_count) <- c( "XBRL Customers")
 
 #////////////////////////////////
 # Total # of XBRL registrants
@@ -232,7 +232,7 @@ write.xlsx(x = project_hours, file = "42_data.xlsx",sheetName = "project_hours",
 write.xlsx(x = scheduled_services, file = "42_data.xlsx",sheetName = "scheduled_services", row.names = TRUE, append = TRUE)
 write.xlsx(x = count_by_role, file = "42_data.xlsx",sheetName = "count_by_role", row.names = FALSE, append = TRUE)
 write.xlsx(x = time_by_role, file = "42_data.xlsx",sheetName = "time_by_role", row.names = FALSE, append = TRUE)
-write.xlsx(x = xbrl_customer_count, file = "42_data.xlsx",sheetName = "xbrl_customers", row.names = TRUE, append = TRUE)
+# write.xlsx(x = xbrl_customer_count, file = "42_data.xlsx",sheetName = "xbrl_customers", row.names = TRUE, append = TRUE)
 write.xlsx(x = sales_info_wide, file = "42_data.xlsx",sheetName = "net_sales", row.names = TRUE, append = TRUE)
 write.xlsx(x = discount_groups_wide, file = "42_data.xlsx",sheetName = "services by discount", row.names = FALSE, append = TRUE)
 write.xlsx(x = full_discount_wide, file = "42_data.xlsx",sheetName = "Full discount", row.names = FALSE, append = TRUE)
