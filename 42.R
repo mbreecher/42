@@ -1,11 +1,12 @@
 #the answer to life, the universe and everything
 #dependencies:
-#timelog_for_r
-#subcloud_for_r
-#role_dates
-#accounts_with_year_end
-#contracts_for_pshistory
-#hierarchy
+#timelog_for_R.csv 
+#services_for_ps_history_R.csv
+#ps_start_dates.csv
+#opportunities_for_R.csv
+#accounts_with_year_end.csv
+#contracts_for_pshistory.csv
+#hierarchy.csv
 start = proc.time() #expect ~16 minutes
 library(plyr)
 library(reshape2)
@@ -31,7 +32,7 @@ agg_billable <- billable[order(agg_billable$monthyear),] #sort
 #cast wide to prepare for rbind
 billable_hours <- dcast(agg_billable, xbrl_status + form_type ~ monthyear, sum, value.var = "Hours")
 names(billable_hours) <- monthyear_to_written(names(billable_hours))
-row.names(billable_hours) <- paste(test$xbrl_status, test$form_type, sep = " - ")
+row.names(billable_hours) <- paste(billable_hours$xbrl_status, billable_hours$form_type, sep = " - ")
 name_order <- c("DIY - Q","DIY - K","Basic - Q","Basic - K","Full Service - Q","Full Service - K")
 billable_hours <- billable_hours[match(name_order, row.names(billable_hours)),]
 billable_hours <- billable_hours[,-c(1,2)]
