@@ -28,8 +28,9 @@ source("helpers.R")
 ptm <- proc.time()
 collapsed_monthly <- timelog_with_status() #~12 minutes
 proc.time() - ptm
+collapsed_monthly <- collapsed_monthly[order(collapsed_monthly$Date),]
 agg_billable <- aggregate(Hours ~ monthyear +  xbrl_status + form_type, 
-                          data = collapsed_monthly[collapsed_monthly$Billable %in% 1 & order(collapsed_monthly$Date),], FUN = sum)
+                          data = collapsed_monthly[collapsed_monthly$Billable %in% 1,], FUN = sum)
 
 #cast wide to prepare for rbind
 billable_hours <- dcast(agg_billable, xbrl_status + form_type ~ monthyear, sum, value.var = "Hours")
@@ -44,7 +45,6 @@ billable_hours <- billable_hours[,-c(1,2)]
 #////////////////////////////////
 
 project_time <- aggregate(Hours ~ monthyear +  Service.Type + Form.Type, data = collapsed_monthly[collapsed_monthly$Billable %in% 0,], FUN = sum)
-project_time <- project_time[order(project_time$monthyear),] #sort
 project_time$header <- paste(project_time$Form.Type, project_time$Service.Type, sep = " ")
 groups <- c("10-K Detail Tagging","10-Q Detail Tagging","10-K Full Review","10-Q Full Review","10-K Standard Import","10-Q Standard Import","10-K Full Service Standard Import","10-Q Full Service Standard Import","10-K Maintenance","10-Q Maintenance","K-K Roll Forward","Q-K Roll Forward","Q-Q Roll Forward","K-Q Roll Forward","Q-K Full Service Roll Forward","10-K Full Service Roll Forward","10-Q Full Service Roll Forward")
 project_time[!(project_time$header %in% groups),]$header <- "Other Services"
@@ -66,6 +66,7 @@ services <- import_services(output = 'expanded')
 
 services <- services[services$filing.estimate >= "2013-06-30",]
 services$monthyear <- format(services$filing.estimate, format = "%y-%m")
+services <- services[order(services$filing.estimate),]
 
 scheduled_by_month <- aggregate(Services.ID ~ monthyear + Service.Type + Form.Type, data = services, FUN = length)
 scheduled_by_month <- scheduled_by_month[!scheduled_by_month$Service.Type %in% c("Migration"),] #remove migrations
@@ -73,7 +74,7 @@ scheduled_by_month[scheduled_by_month$Service.Type %in% c("Full Service Roll For
 scheduled_by_month$Service.Name <- paste(scheduled_by_month$Form.Type, scheduled_by_month$Service.Type, sep = " ")
 name_order <- c("10-K Detail Tagging","10-Q Detail Tagging","10-K Full Review","10-Q Full Review","10-K Standard Import","10-Q Standard Import", "10-K Full Service Standard Import","10-Q Full Service Standard Import","10-K Maintenance","10-Q Maintenance","K-K Roll Forward","Q-K Roll Forward","Q-Q Roll Forward","K-Q Roll Forward","10-K Full Service Roll Forward","10-Q Full Service Roll Forward")
 scheduled_by_month[!scheduled_by_month$Service.Name %in% name_order,]$Service.Name <- "Other Services"
-scheduled_by_month <- scheduled_by_month[order(scheduled_by_month$monthyear),]
+
 #cast wide to prepare for rbind
 scheduled_services <- dcast(scheduled_by_month, Service.Name ~ monthyear, sum, value.var = "Services.ID")
 names(scheduled_services) <- monthyear_to_written(names(scheduled_services))
@@ -98,7 +99,6 @@ names(count_by_role) <- monthyear_to_written(names(count_by_role))
 # Total client time by role
 #////////////////////////////////
 time_by_role <- aggregate(Hours ~ monthyear +  role , data = all_time, FUN = sum)
-time_by_role <- time_by_role[order(time_by_role$monthyear),]
 time_by_role <- dcast(time_by_role, role ~ monthyear, sum, value.var = "Hours") 
 time_by_role <- time_by_role[time_by_role$role %in% c("PSM", "PSS", "Sr PSM"),]
 names(time_by_role) <- monthyear_to_written(names(time_by_role))
@@ -144,6 +144,7 @@ names(time_by_role) <- monthyear_to_written(names(time_by_role))
 # Net discounted sales price
 #////////////////////////////////
 collapsed_opps <- collapsed_opportunities() # ~2.75 minutes
+collapsed_opps <- collapsed_opps[order(collapsed_opps$filing.estimate),]
 
 #make list price sales price if list price == 0 or na
 collapsed_opps[collapsed_opps$List.Price %in% 0 | is.na(collapsed_opps$List.Price),]$List.Price <- collapsed_opps[collapsed_opps$List.Price %in% 0  | is.na(collapsed_opps$List.Price),]$Sales.Price
@@ -155,7 +156,6 @@ collapsed_opps$discount <- 1 #instantiate field with full discount
 collapsed_opps[!collapsed_opps$Sales.Price %in% 0,]$discount <- 1 - (collapsed_opps[!collapsed_opps$Sales.Price %in% 0,]$Sales.Price / collapsed_opps[!collapsed_opps$Sales.Price %in% 0,]$List.Price)
 
 sales_info <- aggregate(Sales.Price ~ monthyear + Service.Type + Form.Type, data = collapsed_opps, FUN = sum)
-sales_info <- sales_info[order(sales_info$monthyear),]
 sales_info$header <- paste(sales_info$Form.Type, sales_info$Service.Type, sep = " ")
 groups <- c("10-K Detail Tagging","10-Q Detail Tagging","10-K Full Review","10-Q Full Review","10-K Standard Import","10-Q Standard Import","10-K Full Service Standard Import","10-Q Full Service Standard Import","10-K Maintenance","10-Q Maintenance","K-K Roll Forward","Q-K Roll Forward","Q-Q Roll Forward","K-Q Roll Forward","10-K Full Service Roll Forward","10-Q Full Service Roll Forward")
 sales_info[!(sales_info$header %in% groups),]$header <- "Other Services"
@@ -186,7 +186,6 @@ collapsed_opps[collapsed_opps$discount > .75 & collapsed_opps$discount < 1,]$dis
 # }
 
 discount_groups <- aggregate(Services.ID ~ monthyear + discount.bucket, data = collapsed_opps, FUN = length)
-discount_groups <- discount_groups[order(discount_groups$monthyear),]
 
 #cast wide to prepare for rbind
 discount_groups_wide <- dcast(discount_groups, discount.bucket ~ monthyear, sum, value.var = "Services.ID")
@@ -199,7 +198,6 @@ discount_groups_wide <- discount_groups_wide[match(name_order, discount_groups_w
 #////////////////////////////////
 
 full_discount <- aggregate(Services.ID ~ monthyear + Service.Type, data = collapsed_opps[collapsed_opps$discount %in% 1,], FUN = length)
-full_discount <- full_discount[order(full_discount$monthyear),]
 
 #cast wide to prepare for rbind
 full_discount_wide <- dcast(full_discount, Service.Type ~ monthyear, sum, value.var = "Services.ID")
@@ -210,7 +208,6 @@ names(full_discount_wide) <- monthyear_to_written(names(full_discount_wide))
 #////////////////////////////////
 
 discount_20_to_99 <- aggregate(Services.ID ~ monthyear + Service.Type, data = collapsed_opps[collapsed_opps$discount >.2 &  collapsed_opps$discount < 1,], FUN = length)
-discount_20_to_99 <- discount_20_to_99[order(discount_20_to_99$monthyear),]
 
 #cast wide to prepare for rbind
 discount_20_to_99_wide <- dcast(discount_20_to_99, Service.Type ~ monthyear, sum, value.var = "Services.ID")
