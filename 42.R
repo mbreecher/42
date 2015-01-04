@@ -25,9 +25,11 @@ source("monthly_time.R")
 setwd("C:/R/workspace/42")
 source("helpers.R")
 
+ptm <- proc.time()
 collapsed_monthly <- timelog_with_status() #~12 minutes
-agg_billable <- aggregate(Hours ~ monthyear +  xbrl_status + form_type, data = collapsed_monthly[collapsed_monthly$Billable %in% 1,], FUN = sum)
-agg_billable <- billable[order(agg_billable$monthyear),] #sort
+proc.time() - ptm
+agg_billable <- aggregate(Hours ~ monthyear +  xbrl_status + form_type, 
+                          data = collapsed_monthly[collapsed_monthly$Billable %in% 1 & order(collapsed_monthly$Date),], FUN = sum)
 
 #cast wide to prepare for rbind
 billable_hours <- dcast(agg_billable, xbrl_status + form_type ~ monthyear, sum, value.var = "Hours")
