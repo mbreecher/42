@@ -93,6 +93,7 @@ all_time[all_time$User %in% "Jane Cavanaugh" & all_time$monthyear %in% c("14-09"
 count_by_role <- aggregate(Hours ~ monthyear + User + role , data = all_time, FUN = sum)
 count_by_role <- ddply(count_by_role, .(monthyear, role), summarise, count = length(unique(User)))
 count_by_role <- dcast(count_by_role, role ~ monthyear, sum, value.var = "count")
+count_by_role <- count_by_role[count_by_role$role %in% c("PSM", "PSS", "Sr PSM"),]
 names(count_by_role) <- monthyear_to_written(names(count_by_role))
 
 #////////////////////////////////
@@ -104,7 +105,14 @@ time_by_role <- time_by_role[time_by_role$role %in% c("PSM", "PSS", "Sr PSM"),]
 names(time_by_role) <- monthyear_to_written(names(time_by_role))
 
 #////////////////////////////////
-# xbrl customers at month-end
+# xbrl customers
+#////////////////////////////////
+
+
+
+#////////////////////////////////
+# Total # of XBRL registrants
+# ps history number
 #////////////////////////////////
 #historical filers from market data
 market <- import_sec()
@@ -116,11 +124,6 @@ market_uniques_wide <- dcast(market_uniques, xbrl_software ~ monthyear, length, 
 #market_uniques_wide <- market_uniques_wide[rev(order(names(market_uniques_wide)))]
 market_uniques_wide <- market_uniques_wide[market_uniques_wide$xbrl_software %in% "WebFilings",]
 names(market_uniques_wide) <- monthyear_to_written(names(market_uniques_wide))
-
-#////////////////////////////////
-# Total # of XBRL registrants
-# ps history number
-#////////////////////////////////
 
 #////////////////////////////////
 # Net discounted sales price
@@ -214,7 +217,8 @@ write.xlsx(x = project_hours, file = "42_data.xlsx",sheetName = "project_hours",
 write.xlsx(x = scheduled_services, file = "42_data.xlsx",sheetName = "scheduled_services", row.names = TRUE, append = TRUE)
 write.xlsx(x = count_by_role, file = "42_data.xlsx",sheetName = "count_by_role", row.names = FALSE, append = TRUE)
 write.xlsx(x = time_by_role, file = "42_data.xlsx",sheetName = "time_by_role", row.names = FALSE, append = TRUE)
-write.xlsx(x = market_uniques_wide, file = "42_data.xlsx",sheetName = "xbrl_customers", row.names = FALSE, append = TRUE)
+#write.xlsx(x = market_uniques_wide, file = "42_data.xlsx",sheetName = "xbrl_customers", row.names = FALSE, append = TRUE)
+write.xlsx(x = market_uniques_wide, file = "42_data.xlsx",sheetName = "xbrl_registrants", row.names = FALSE, append = TRUE)
 write.xlsx(x = sales_info_wide, file = "42_data.xlsx",sheetName = "net_sales", row.names = TRUE, append = TRUE)
 write.xlsx(x = discount_groups_wide, file = "42_data.xlsx",sheetName = "services by discount", row.names = FALSE, append = TRUE)
 write.xlsx(x = full_discount_wide, file = "42_data.xlsx",sheetName = "Full discount", row.names = FALSE, append = TRUE)
