@@ -113,6 +113,7 @@ market$monthyear <- format(market$filing_date, format = "%y-%m")
 
 market_uniques <- unique(market[names(market) %in% c("name", "cik", "xbrl_software", "monthyear")])
 market_uniques_wide <- dcast(market_uniques, xbrl_software ~ monthyear, length, value.var = "cik")
+#market_uniques_wide <- market_uniques_wide[rev(order(names(market_uniques_wide)))]
 market_uniques_wide <- market_uniques_wide[market_uniques_wide$xbrl_software %in% "WebFilings",]
 names(market_uniques_wide) <- monthyear_to_written(names(market_uniques_wide))
 
