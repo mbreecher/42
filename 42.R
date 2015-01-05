@@ -64,7 +64,7 @@ project_hours[is.na(project_hours)] <- 0
 hierarchy <- import_hierarchy() #for some reason, not taking when imported within function
 services <- import_services(output = 'expanded')
 
-services <- services[services$filing.estimate >= "2013-06-30",]
+services <- services[services$filing.estimate > "2013-06-30",]
 services$monthyear <- format(services$filing.estimate, format = "%y-%m")
 services <- services[order(services$filing.estimate),]
 
