@@ -44,7 +44,8 @@ billable_hours <- billable_hours[,-c(1,2)]
 # Flat Fee Hours by service level
 #////////////////////////////////
 
-project_time <- aggregate(Hours ~ monthyear +  Service.Type + Form.Type, data = collapsed_monthly[collapsed_monthly$Billable %in% 0,], FUN = sum)
+project_time <- aggregate(Hours ~ monthyear +  Service.Type + Form.Type, 
+                          data = collapsed_monthly[collapsed_monthly$Billable %in% 0 & !is.na(collapsed_monthly$Hours),], FUN = sum)
 project_time$header <- paste(project_time$Form.Type, project_time$Service.Type, sep = " ")
 groups <- c("10-K Detail Tagging","10-Q Detail Tagging","10-K Full Review","10-Q Full Review","10-K Standard Import","10-Q Standard Import","10-K Full Service Standard Import","10-Q Full Service Standard Import","10-K Maintenance","10-Q Maintenance","K-K Roll Forward","Q-K Roll Forward","Q-Q Roll Forward","K-Q Roll Forward","Q-K Full Service Roll Forward","10-K Full Service Roll Forward","10-Q Full Service Roll Forward")
 project_time[!(project_time$header %in% groups),]$header <- "Other Services"
@@ -124,6 +125,14 @@ market_uniques_wide <- dcast(market_uniques, xbrl_software ~ monthyear, length, 
 #market_uniques_wide <- market_uniques_wide[rev(order(names(market_uniques_wide)))]
 market_uniques_wide <- market_uniques_wide[market_uniques_wide$xbrl_software %in% "WebFilings",]
 names(market_uniques_wide) <- monthyear_to_written(names(market_uniques_wide))
+
+app_data <- import_app_filing_data()
+app_data <- app_data[app_data$Form.Type %in% c("10-Q", "10-Q/A", "10-K", "10-K/A"),] #limit to form 10
+app_data <- unique(app_data[names(app_data) %in% c("Company.Name", "Filing.CIK", "monthyear")]) #18k -> 8k
+app_data$software <- "WebFilings"
+app_data_wide <- dcast(app_data, software ~ monthyear, length, value.var = "Filing.CIK")
+names(app_data_wide) <- monthyear_to_written(names(app_data_wide))
+app_data_wide
 
 #////////////////////////////////
 # Net discounted sales price
