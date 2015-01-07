@@ -133,6 +133,19 @@ row.names(customer_counts) <- c("Registrants", "Customers")
 customer_counts <- customer_counts[,-1]
 
 #////////////////////////////////
+# filing counts
+#////////////////////////////////
+
+# filings during the month... maybe by type
+filings_wide <- dcast(app_data, Form.Type ~ monthyear, length, value.var = "Accession.Number")
+row.names(filings_wide) <- filings_wide$Form.Type
+filings_wide <- filings_wide[,-1]
+names(filings_wide) <- monthyear_to_written(names(filings_wide))
+# number of true diys that filed by month
+
+
+
+#////////////////////////////////
 # Net discounted sales price
 #////////////////////////////////
 collapsed_opps <- collapsed_opportunities() # ~2.75 minutes
