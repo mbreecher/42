@@ -115,16 +115,7 @@ names(time_by_role) <- monthyear_to_written(names(time_by_role))
 # Total # of XBRL registrants
 # ps history number
 #////////////////////////////////
-#historical filers from market data
-# market <- import_sec()
-# market <- market[order(market$filing_date),]
-# market$monthyear <- format(market$filing_date, format = "%y-%m")
-# 
-# market_uniques <- unique(market[names(market) %in% c("name", "cik", "xbrl_software", "monthyear")])
-# market_uniques_wide <- dcast(market_uniques, xbrl_software ~ monthyear, length, value.var = "cik")
-# #market_uniques_wide <- market_uniques_wide[rev(order(names(market_uniques_wide)))]
-# market_uniques_wide <- market_uniques_wide[market_uniques_wide$xbrl_software %in% "WebFilings",]
-# names(market_uniques_wide) <- monthyear_to_written(names(market_uniques_wide))
+#use application log to identify filings
 
 app_data <- import_app_filing_data()
 app_data <- app_data[app_data$Form.Type %in% c("10-Q", "10-K", "10-K/A", "10-Q/A"),] #limit to form 10
