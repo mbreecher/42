@@ -116,21 +116,21 @@ names(time_by_role) <- monthyear_to_written(names(time_by_role))
 # ps history number
 #////////////////////////////////
 #historical filers from market data
-market <- import_sec()
-market <- market[order(market$filing_date),]
-market$monthyear <- format(market$filing_date, format = "%y-%m")
-
-market_uniques <- unique(market[names(market) %in% c("name", "cik", "xbrl_software", "monthyear")])
-market_uniques_wide <- dcast(market_uniques, xbrl_software ~ monthyear, length, value.var = "cik")
-#market_uniques_wide <- market_uniques_wide[rev(order(names(market_uniques_wide)))]
-market_uniques_wide <- market_uniques_wide[market_uniques_wide$xbrl_software %in% "WebFilings",]
-names(market_uniques_wide) <- monthyear_to_written(names(market_uniques_wide))
+# market <- import_sec()
+# market <- market[order(market$filing_date),]
+# market$monthyear <- format(market$filing_date, format = "%y-%m")
+# 
+# market_uniques <- unique(market[names(market) %in% c("name", "cik", "xbrl_software", "monthyear")])
+# market_uniques_wide <- dcast(market_uniques, xbrl_software ~ monthyear, length, value.var = "cik")
+# #market_uniques_wide <- market_uniques_wide[rev(order(names(market_uniques_wide)))]
+# market_uniques_wide <- market_uniques_wide[market_uniques_wide$xbrl_software %in% "WebFilings",]
+# names(market_uniques_wide) <- monthyear_to_written(names(market_uniques_wide))
 
 app_data <- import_app_filing_data()
-app_data <- app_data[app_data$Form.Type %in% c("10-Q", "10-Q/A", "10-K", "10-K/A"),] #limit to form 10
-app_data <- unique(app_data[names(app_data) %in% c("Company.Name", "Filing.CIK", "monthyear")]) #18k -> 8k
+app_data <- app_data[app_data$Form.Type %in% c("10-Q", "10-K", "10-K/A", "10-Q/A"),] #limit to form 10
 app_data$software <- "WebFilings"
-app_data_wide <- dcast(app_data, software ~ monthyear, length, value.var = "Filing.CIK")
+app_data_uniques <- unique(app_data[names(app_data) %in% c("Registrant.CIK", "monthyear", "software")])
+app_data_wide <- dcast(app_data_uniques, software ~ monthyear, length, value.var = "Registrant.CIK")
 names(app_data_wide) <- monthyear_to_written(names(app_data_wide))
 app_data_wide
 
