@@ -143,7 +143,12 @@ filings_wide <- filings_wide[,-1]
 names(filings_wide) <- monthyear_to_written(names(filings_wide))
 # number of true diys that filed by month
 
-
+#////////////////////////////////
+# combine filing and customer count info for filing and customer data tab
+#////////////////////////////////
+space <- rep("", dim(customer_counts)[1])
+filing_and_customer <- rbind(customer_counts, space, filings_wide)
+row.names(filing_and_customer) <- c(row.names(customer_counts), "", row.names(filings_wide))
 
 #////////////////////////////////
 # Net discounted sales price
@@ -237,7 +242,7 @@ write.xlsx(x = project_hours, file = "42_data.xlsx",sheetName = "project_hours",
 write.xlsx(x = scheduled_services, file = "42_data.xlsx",sheetName = "scheduled_services", row.names = TRUE, append = TRUE)
 write.xlsx(x = count_by_role, file = "42_data.xlsx",sheetName = "count_by_role", row.names = FALSE, append = TRUE)
 write.xlsx(x = time_by_role, file = "42_data.xlsx",sheetName = "time_by_role", row.names = FALSE, append = TRUE)
-#write.xlsx(x = customer_counts, file = "42_data.xlsx",sheetName = "xbrl_registrants", row.names = FALSE, append = TRUE)
+write.xlsx(x = filing_and_customer, file = "42_data.xlsx",sheetName = "customers_and_filings", row.names = TRUE, append = TRUE)
 write.xlsx(x = sales_info_wide, file = "42_data.xlsx",sheetName = "net_sales", row.names = TRUE, append = TRUE)
 write.xlsx(x = discount_groups_wide, file = "42_data.xlsx",sheetName = "services by discount", row.names = FALSE, append = TRUE)
 write.xlsx(x = full_discount_wide, file = "42_data.xlsx",sheetName = "Full discount", row.names = FALSE, append = TRUE)
