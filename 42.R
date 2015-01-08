@@ -26,11 +26,11 @@ setwd("C:/R/workspace/42")
 source("helpers.R")
 
 ptm <- proc.time()
-timelog_with_status <- timelog_with_status() #~12 minutes
+timelog_with_status_df <- timelog_with_status() #~12 minutes
 proc.time() - ptm
-timelog_with_status <- timelog_with_status[order(timelog_with_status$Date),]
+timelog_with_status_df <- timelog_with_status_df[order(timelog_with_status_df$Date),]
 agg_billable <- aggregate(Hours ~ monthyear +  xbrl_status + form_type, 
-                          data = timelog_with_status[timelog_with_status$Billable %in% 1,], FUN = sum)
+                          data = timelog_with_status_df[timelog_with_status_df$Billable %in% 1,], FUN = sum)
 
 #cast wide to prepare for rbind
 billable_hours <- dcast(agg_billable, xbrl_status + form_type ~ monthyear, sum, value.var = "Hours")
@@ -45,7 +45,7 @@ billable_hours <- billable_hours[,-c(1,2)]
 #////////////////////////////////
 
 project_time <- aggregate(Hours ~ monthyear +  Service.Type + Form.Type, 
-                          data = timelog_with_status[timelog_with_status$Billable %in% 0 & !is.na(timelog_with_status$Hours),], FUN = sum)
+                          data = timelog_with_status_df[timelog_with_status_df$Billable %in% 0 & !is.na(timelog_with_status_df$Hours),], FUN = sum)
 project_time$header <- paste(project_time$Form.Type, project_time$Service.Type, sep = " ")
 groups <- c("10-K Detail Tagging","10-Q Detail Tagging","10-K Full Review","10-Q Full Review","10-K Standard Import","10-Q Standard Import","10-K Full Service Standard Import","10-Q Full Service Standard Import","10-K Maintenance","10-Q Maintenance","K-K Roll Forward","Q-K Roll Forward","Q-Q Roll Forward","K-Q Roll Forward","Q-K Full Service Roll Forward","10-K Full Service Roll Forward","10-Q Full Service Roll Forward")
 project_time[!(project_time$header %in% groups),]$header <- "Other Services"
@@ -88,7 +88,7 @@ scheduled_services[is.na(scheduled_services)] <- 0
 #////////////////////////////////
 # Full Time Employees - count
 #////////////////////////////////
-all_time <- aggregate(Hours ~ monthyear +  role + User , data = timelog_with_status, FUN = sum)
+all_time <- aggregate(Hours ~ monthyear +  role + User , data = timelog_with_status_df, FUN = sum)
 all_time[all_time$User %in% "Jane Cavanaugh" & all_time$monthyear %in% c("14-09", "14-10", "14-11"),]$role <- "PSS"
 #all_time[all_time$User %in% "Alissa Clausen",]$role <- "PSS"
 count_by_role <- aggregate(Hours ~ monthyear + User + role , data = all_time, FUN = sum)
@@ -120,9 +120,7 @@ app_data_wide <- dcast(app_data_uniques, software ~ monthyear, length, value.var
 names(app_data_wide) <- monthyear_to_written(names(app_data_wide))
 app_data_wide
 
-#////////////////////////////////
-# xbrl customers
-#////////////////////////////////
+# filing_and_customer: xbrl customers
 customers <- unique(app_data[names(app_data) %in% c("Company.Name", "monthyear", "software")])
 customers_wide <- dcast(customers, software ~ monthyear, length, value.var = "Company.Name")
 names(customers_wide) <- monthyear_to_written(names(customers_wide))
@@ -132,23 +130,39 @@ customer_counts <- rbind(app_data_wide, customers_wide)
 row.names(customer_counts) <- c("Registrants", "Customers")
 customer_counts <- customer_counts[,-1]
 
-#////////////////////////////////
-# filing counts
-#////////////////////////////////
-
-# filings during the month... maybe by type
+# filing_and_customer: filing counts
 filings_wide <- dcast(app_data, Form.Type ~ monthyear, length, value.var = "Accession.Number")
 row.names(filings_wide) <- filings_wide$Form.Type
 filings_wide <- filings_wide[,-1]
 names(filings_wide) <- monthyear_to_written(names(filings_wide))
-# number of true diys that filed by month
 
-#////////////////////////////////
+# number of count by DIY/Hourly/Full Service
+customer_status_uniques <- ddply(timelog_with_status_df[timelog_with_status_df$Date >= "2014-01-01",], 
+                                 .var = c("Account.Name", "monthyear"), .fun = function(x){
+  highest_status <- NA
+  if("Full Service" %in% x$xbrl_status){
+    highest_status <- "Full Service" 
+  }else if("Basic" %in% x$xbrl_status){
+    highest_status <- "Basic" 
+  }else if("DIY" %in% x$xbrl_status){
+    highest_status <- "DIY" 
+  }
+  result <- data.frame(Account.Name = unique(x$Account.Name),
+                       monthyear = unique(x$monthyear),
+                       highest_status = highest_status)
+  result
+})
+customer_status_uniques$monthyear <- as.character(customer_status_uniques$monthyear)
+customer_status_uniques <- customer_status_uniques[order(customer_status_uniques$monthyear),]
+customer_status_wide <- dcast(customer_status_uniques, highest_status ~ monthyear, length, value.var = "Account.Name")
+names(customer_status_wide) <- monthyear_to_written(names(customer_status_wide))
+row.names(customer_status_wide) <- customer_status_wide$highest_status
+customer_status_wide <- customer_status_wide[,-1]
+
 # combine filing and customer count info for filing and customer data tab
-#////////////////////////////////
 space <- rep("", dim(customer_counts)[1])
-filing_and_customer <- rbind(customer_counts, space, filings_wide)
-row.names(filing_and_customer) <- c(row.names(customer_counts), "", row.names(filings_wide))
+filing_and_customer <- rbind(customer_counts, space, filings_wide, space, customer_status_wide)
+row.names(filing_and_customer) <- c(row.names(customer_counts), "filings", row.names(filings_wide), "service_status", row.names(customer_status_wide))
 
 #////////////////////////////////
 # Net discounted sales price
@@ -226,7 +240,7 @@ names(discount_20_to_99_wide) <- monthyear_to_written(names(discount_20_to_99_wi
 #////////////////////////////////
 # Goodwill Hours used by month
 #////////////////////////////////
-wide_goodwill_used <- dcast(timelog_with_status[timelog_with_status$Service %in% c("Goodwill Hours"),],Service ~ monthyear, sum, value.var = "Hours" )
+wide_goodwill_used <- dcast(timelog_with_status_df[timelog_with_status_df$Service %in% c("Goodwill Hours"),],Service ~ monthyear, sum, value.var = "Hours" )
 names(wide_goodwill_used) <- monthyear_to_written(names(wide_goodwill_used))
 
 #////////////////////////////////
