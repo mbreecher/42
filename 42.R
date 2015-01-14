@@ -26,11 +26,11 @@ setwd("C:/R/workspace/42")
 source("helpers.R")
 
 ptm <- proc.time()
-timelog_monthly_with_status_df <- timelog_monthly_with_status() #~12 minutes
+timelog_with_status_df <- timelog_with_status() #~12 minutes
 proc.time() - ptm
-timelog_monthly_with_status_df <- timelog_monthly_with_status_df[order(timelog_monthly_with_status_df$Date),]
+timelog_with_status_df <- timelog_with_status_df[order(timelog_with_status_df$Date),]
 agg_billable <- aggregate(Hours ~ monthyear +  xbrl_status + form_type, 
-                          data = timelog_monthly_with_status_df[timelog_monthly_with_status_df$Billable %in% 1,], FUN = sum)
+                          data = timelog_with_status_df[timelog_with_status_df$Billable %in% 1,], FUN = sum)
 
 #cast wide to prepare for rbind
 billable_hours <- dcast(agg_billable, xbrl_status + form_type ~ monthyear, sum, value.var = "Hours")
@@ -45,7 +45,7 @@ billable_hours <- billable_hours[,-c(1,2)]
 #////////////////////////////////
 
 project_time <- aggregate(Hours ~ monthyear +  Service.Type + Form.Type, 
-                          data = timelog_monthly_with_status_df[timelog_monthly_with_status_df$Billable %in% 0 & !is.na(timelog_monthly_with_status_df$Hours),], FUN = sum)
+                          data = timelog_with_status_df[timelog_with_status_df$Billable %in% 0 & !is.na(timelog_with_status_df$Hours),], FUN = sum)
 project_time$header <- paste(project_time$Form.Type, project_time$Service.Type, sep = " ")
 groups <- c("10-K Detail Tagging","10-Q Detail Tagging","10-K Full Review","10-Q Full Review","10-K Standard Import","10-Q Standard Import","10-K Full Service Standard Import","10-Q Full Service Standard Import","10-K Maintenance","10-Q Maintenance","K-K Roll Forward","Q-K Roll Forward","Q-Q Roll Forward","K-Q Roll Forward","Q-K Full Service Roll Forward","10-K Full Service Roll Forward","10-Q Full Service Roll Forward")
 project_time[!(project_time$header %in% groups),]$header <- "Other Services"
@@ -88,7 +88,7 @@ scheduled_services[is.na(scheduled_services)] <- 0
 #////////////////////////////////
 # Full Time Employees - count
 #////////////////////////////////
-all_time <- aggregate(Hours ~ monthyear +  role + User , data = timelog_monthly_with_status_df, FUN = sum)
+all_time <- aggregate(Hours ~ monthyear +  role + User , data = timelog_with_status_df, FUN = sum)
 all_time[all_time$User %in% "Jane Cavanaugh" & all_time$monthyear %in% c("14-09", "14-10", "14-11"),]$role <- "PSS"
 #all_time[all_time$User %in% "Alissa Clausen",]$role <- "PSS"
 count_by_role <- aggregate(Hours ~ monthyear + User + role , data = all_time, FUN = sum)
@@ -140,9 +140,9 @@ names(filings_wide) <- monthyear_to_written(names(filings_wide))
 ptm <- proc.time()
 app_data_cust_status <- ddply(app_data, .var = c("Company.Name", "monthyear"), .fun = function(x){
   status = NA
-  time_cust <- timelog_monthly_with_status_df[timelog_monthly_with_status_df$Account.Name %in% x$Company.Name &
-                                        timelog_monthly_with_status_df$Date <= max(x$Filing.Date) &
-                                        timelog_monthly_with_status_df$Date >= min(x$Filing.Date) - 45,]
+  time_cust <- timelog_with_status_df[timelog_with_status_df$Account.Name %in% x$Company.Name &
+                                        timelog_with_status_df$Date <= max(x$Filing.Date) &
+                                        timelog_with_status_df$Date >= min(x$Filing.Date) - 45,]
   if(dim(time_cust)[1] == 0){
     status = "Inactive DIY"
   }else if(TRUE %in% (time_cust$Service.Type %in% c("Roll Forward","Standard Import","Detail Tagging","Full Service Roll Forward","Full Service Standard Import"))){
@@ -160,9 +160,9 @@ proc.time() - ptm
 app_data_reg_status <- ddply(app_data, .var = c("Registrant.CIK", "monthyear"), .fun = function(x){
   status = NA
   
-  time_reg <- timelog_monthly_with_status_df[timelog_monthly_with_status_df$CIK %in% x$Registrant.CIK &
-                                        timelog_monthly_with_status_df$Date <= max(x$Filing.Date) &
-                                        timelog_monthly_with_status_df$Date >= min(x$Filing.Date) - 45,]
+  time_reg <- timelog_with_status_df[timelog_with_status_df$CIK %in% x$Registrant.CIK &
+                                        timelog_with_status_df$Date <= max(x$Filing.Date) &
+                                        timelog_with_status_df$Date >= min(x$Filing.Date) - 45,]
 
   if(dim(time_reg)[1] == 0){
     status = "Inactive DIY "
@@ -273,7 +273,7 @@ names(discount_20_to_99_wide) <- monthyear_to_written(names(discount_20_to_99_wi
 #////////////////////////////////
 # Goodwill Hours used by month
 #////////////////////////////////
-wide_goodwill_used <- dcast(timelog_monthly_with_status_df[timelog_monthly_with_status_df$Service %in% c("Goodwill Hours"),],Service ~ monthyear, sum, value.var = "Hours" )
+wide_goodwill_used <- dcast(timelog_with_status_df[timelog_with_status_df$Service %in% c("Goodwill Hours"),],Service ~ monthyear, sum, value.var = "Hours" )
 names(wide_goodwill_used) <- monthyear_to_written(names(wide_goodwill_used))
 
 #////////////////////////////////
