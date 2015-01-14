@@ -21,7 +21,7 @@ source("transformations.r")
 #////////////////////////////////
 
 setwd("C:/R/workspace/shared")
-source("monthly_time.R")
+source("time_by_interval.R")
 setwd("C:/R/workspace/42")
 source("helpers.R")
 
