@@ -195,7 +195,7 @@ registrants_by_status <- registrants_by_status[match(c("Full Service ", "Basic "
 # combine filing and customer count info for filing and customer data tab
 space <- rep("", dim(customer_counts)[1])
 filing_and_customer <- rbind(customer_counts, space, filings_wide,space, registrants_by_status,space, customer_by_status)
-row.names(filing_and_customer) <- c(row.names(customer_counts), "by form", row.names(filings_wide), "registrants", row.names(registrants_by_status), "customers", row.names(customer_by_status))
+row.names(filing_and_customer) <- c(row.names(customer_counts), "by form", row.names(filings_wide), "registrants", row.names(registrants_by_status), "wDesk accounts", row.names(customer_by_status))
 
 #////////////////////////////////
 # Net discounted sales price
