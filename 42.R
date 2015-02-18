@@ -27,7 +27,7 @@ source("helpers.R")
 
 ptm <- proc.time()
 timelog_with_status_df <- timelog_with_status() #~12 minutes
-proc.time() - ptm
+print(proc.time() - ptm)
 timelog_with_status_df <- timelog_with_status_df[order(timelog_with_status_df$Date),]
 agg_billable <- aggregate(Hours ~ monthyear +  xbrl_status + form_type, 
                           data = timelog_with_status_df[timelog_with_status_df$Billable %in% 1,], FUN = sum)
@@ -202,6 +202,8 @@ row.names(filing_and_customer) <- c(row.names(customer_counts), "by form", row.n
 #////////////////////////////////
 collapsed_opps <- collapsed_opportunities() # ~2.75 minutes
 collapsed_opps <- collapsed_opps[order(collapsed_opps$filing.estimate),]
+completed <- unique(services[,names(services) %in% c("Services.ID", "Status")])
+collapsed_opps <- merge(collapsed_opps, completed, by = "Services.ID", all.x = T)
 
 #make list price sales price if list price == 0 or na
 collapsed_opps[collapsed_opps$List.Price %in% 0 | is.na(collapsed_opps$List.Price),]$List.Price <- collapsed_opps[collapsed_opps$List.Price %in% 0  | is.na(collapsed_opps$List.Price),]$Sales.Price
