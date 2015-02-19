@@ -214,13 +214,26 @@ collapsed_opps[collapsed_opps$List.Price < collapsed_opps$Sales.Price,]$List.Pri
 collapsed_opps$discount <- 1 #instantiate field with full discount
 collapsed_opps[!collapsed_opps$Sales.Price %in% 0,]$discount <- 1 - (collapsed_opps[!collapsed_opps$Sales.Price %in% 0,]$Sales.Price / collapsed_opps[!collapsed_opps$Sales.Price %in% 0,]$List.Price)
 
-sales_info <- aggregate(Sales.Price ~ monthyear + Service.Type + Form.Type, data = collapsed_opps, FUN = sum)
+# split projects into historical and future
+#historical (completed) projects
+sales_info_history <- aggregate(Sales.Price ~ monthyear + Service.Type + Form.Type, 
+                    data = collapsed_opps[collapsed_opps$monthyear <= format(Sys.Date(), format = "%y-%m") & collapsed_opps$Status %in% "Completed",], FUN = sum)
+sales_info_history$type <- "history"
+
+#future (active or not started) projects
+sales_info_predicted <- aggregate(Sales.Price ~ monthyear + Service.Type + Form.Type, 
+                    data = collapsed_opps[collapsed_opps$monthyear >= format(Sys.Date(), format = "%y-%m") & !collapsed_opps$Status %in% "Completed",], FUN = sum)
+sales_info_predicted$type <- "predicted"
+
+# now combine time
+sales_info <- rbind(sales_info_history, sales_info_predicted)
 sales_info$header <- paste(sales_info$Form.Type, sales_info$Service.Type, sep = " ")
 groups <- c("10-K Detail Tagging","10-Q Detail Tagging","10-K Full Review","10-Q Full Review","10-K Standard Import","10-Q Standard Import","10-K Full Service Standard Import","10-Q Full Service Standard Import","10-K Maintenance","10-Q Maintenance","K-K Roll Forward","Q-K Roll Forward","Q-Q Roll Forward","K-Q Roll Forward","10-K Full Service Roll Forward","10-Q Full Service Roll Forward")
 sales_info[!(sales_info$header %in% groups),]$header <- "Other Services"
+sales_info$monthyear_amended <- paste(sales_info$monthyear, sales_info$type, sep = "\n")
 
 #cast wide to prepare for rbind
-sales_info_wide <- dcast(sales_info, header ~ monthyear, sum, value.var = "Sales.Price")
+sales_info_wide <- dcast(sales_info, header ~ monthyear_amended, sum, value.var = "Sales.Price")
 sales_info_wide <- sales_info_wide[match(c(groups, "Other Services"),sales_info_wide$header),]
 row.names(sales_info_wide) <- c(groups, "Other Services") #use rownames for service names rather than column
 names(sales_info_wide) <- monthyear_to_written(names(sales_info_wide))
