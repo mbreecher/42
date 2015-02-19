@@ -27,8 +27,18 @@ source("helpers.R")
 
 #all billable time
 ptm <- proc.time()
-timelog_with_status_df <- timelog_with_status() #~12 minutes
+timelog_with_status_df <- timelog_with_status(include_cs = T) #~12 minutes
 print(proc.time() - ptm)
+
+#manual processing of roles
+timelog_with_status_df[timelog_with_status_df$User %in% "Jane Cavanaugh" & timelog_with_status_df$monthyear %in% c("14-09", "14-10", "14-11"),]$role <- "PSS"
+timelog_with_status_df[timelog_with_status_df$User %in% "Jane Cavanaugh" & timelog_with_status_df$monthyear %in% c("14-09", "14-10", "14-11"),]$is_psm <- 1
+
+#peel off and remove non-ps time
+non_ps_time <- timelog_with_status_df[timelog_with_status_df$is_psm %in% 0 | is.na(timelog_with_status_df$is_psm),] #grab 0s and NAs
+agg_non_ps <- aggregate(Hours ~ monthyear + Service.Type, data = non_ps_time[non_ps_time$Billable %in% 1,], FUN = sum)
+timelog_with_status_df <- timelog_with_status_df[timelog_with_status_df$is_psm %in% 1,] #remove non-ps time
+
 timelog_with_status_df <- timelog_with_status_df[order(timelog_with_status_df$Date),]
 agg_billable <- aggregate(Hours ~ monthyear +  xbrl_status + form_type, 
                           data = timelog_with_status_df[timelog_with_status_df$Billable %in% 1,], FUN = sum)
@@ -39,6 +49,11 @@ row.names(billable_hours) <- paste(billable_hours$xbrl_status, billable_hours$fo
 name_order <- c("DIY - Q","DIY - K","Basic - Q","Basic - K","Full Service - Q","Full Service - K")
 billable_hours <- billable_hours[match(name_order, row.names(billable_hours)),]
 billable_hours <- billable_hours[,-c(1,2)]
+
+cs_hours_wide <- dcast(agg_non_ps, Service.Type ~ monthyear, sum, value.var = "Hours")
+row.names(cs_hours_wide) <- cs_hours_wide$Service.Type
+cs_hours_wide <- cs_hours_wide[,!names(cs_hours_wide) %in% "Service.Type"]
+names(cs_hours_wide) <- monthyear_to_written(names(cs_hours_wide))
 
 #report goodwill hours separately
 agg_goodwill <- aggregate(Hours ~ monthyear +  xbrl_status + form_type, 
@@ -54,9 +69,11 @@ goodwill_hours <- goodwill_hours[,-c(1,2)]
 
 #create spacer row and bind billable and goodwill 
 space <- data.frame(matrix(c(rep.int("",length(billable_hours))),nrow=1,ncol=length(billable_hours)))
-names(space) <- names(billable_hours); row.names(space) <- "--goodwill portion only--"
+names(space) <- names(billable_hours); row.names(space) <- "goodwill portion only"
+cs_space <- space; row.names(cs_space) <- "cs time (not included above)"
 
-billable_and_goodwill <- rbind(billable_hours, space, goodwill_hours)
+
+billable_and_goodwill <- rbind(billable_hours, space, goodwill_hours, cs_space, cs_hours_wide)
 
 #////////////////////////////////
 # Flat Fee Hours by service level
@@ -107,11 +124,10 @@ scheduled_services[is.na(scheduled_services)] <- 0
 # Full Time Employees - count
 #////////////////////////////////
 all_time <- aggregate(Hours ~ monthyear +  role + User , data = timelog_with_status_df, FUN = sum)
-all_time[all_time$User %in% "Jane Cavanaugh" & all_time$monthyear %in% c("14-09", "14-10", "14-11"),]$role <- "PSS"
 count_by_role <- aggregate(Hours ~ monthyear + User + role , data = all_time, FUN = sum)
 count_by_role <- ddply(count_by_role, .(monthyear, role), summarise, count = length(unique(User)))
 count_by_role <- dcast(count_by_role, role ~ monthyear, sum, value.var = "count")
-count_by_role <- count_by_role[count_by_role$role %in% c("PSM", "PSS", "Sr PSM"),]
+#count_by_role <- count_by_role[count_by_role$role %in% c("PSM", "PSS", "Sr PSM"),]
 names(count_by_role) <- monthyear_to_written(names(count_by_role))
 
 #////////////////////////////////
@@ -119,7 +135,7 @@ names(count_by_role) <- monthyear_to_written(names(count_by_role))
 #////////////////////////////////
 time_by_role <- aggregate(Hours ~ monthyear +  role , data = all_time, FUN = sum)
 time_by_role <- dcast(time_by_role, role ~ monthyear, sum, value.var = "Hours") 
-time_by_role <- time_by_role[time_by_role$role %in% c("PSM", "PSS", "Sr PSM"),]
+#time_by_role <- time_by_role[time_by_role$role %in% c("PSM", "PSS", "Sr PSM"),]
 names(time_by_role) <- monthyear_to_written(names(time_by_role))
 
 #////////////////////////////////
