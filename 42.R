@@ -25,6 +25,7 @@ source("time_by_interval.R")
 setwd("C:/R/workspace/42")
 source("helpers.R")
 
+#all billable time
 ptm <- proc.time()
 timelog_with_status_df <- timelog_with_status() #~12 minutes
 print(proc.time() - ptm)
@@ -32,13 +33,30 @@ timelog_with_status_df <- timelog_with_status_df[order(timelog_with_status_df$Da
 agg_billable <- aggregate(Hours ~ monthyear +  xbrl_status + form_type, 
                           data = timelog_with_status_df[timelog_with_status_df$Billable %in% 1,], FUN = sum)
 
-#cast wide to prepare for rbind
 billable_hours <- dcast(agg_billable, xbrl_status + form_type ~ monthyear, sum, value.var = "Hours")
 names(billable_hours) <- monthyear_to_written(names(billable_hours))
 row.names(billable_hours) <- paste(billable_hours$xbrl_status, billable_hours$form_type, sep = " - ")
 name_order <- c("DIY - Q","DIY - K","Basic - Q","Basic - K","Full Service - Q","Full Service - K")
 billable_hours <- billable_hours[match(name_order, row.names(billable_hours)),]
 billable_hours <- billable_hours[,-c(1,2)]
+
+#report goodwill hours separately
+agg_goodwill <- aggregate(Hours ~ monthyear +  xbrl_status + form_type, 
+                          data = timelog_with_status_df[timelog_with_status_df$Billable %in% 1 & 
+                                                          timelog_with_status_df$Service %in% "Goodwill Hours",], 
+                          FUN = sum)
+goodwill_hours <- dcast(agg_goodwill, xbrl_status + form_type ~ monthyear, sum, value.var = "Hours")
+names(goodwill_hours) <- monthyear_to_written(names(goodwill_hours))
+row.names(goodwill_hours) <- paste(goodwill_hours$xbrl_status, "-", goodwill_hours$form_type, "(goodwill)", sep = " ")
+name_order <- c("DIY - Q (goodwill)","DIY - K (goodwill)","Basic - Q (goodwill)","Basic - K (goodwill)","Full Service - Q (goodwill)","Full Service - K (goodwill)")
+goodwill_hours <- goodwill_hours[match(name_order, row.names(goodwill_hours)),]
+goodwill_hours <- goodwill_hours[,-c(1,2)]
+
+#create spacer row and bind billable and goodwill 
+space <- data.frame(matrix(c(rep.int("",length(billable_hours))),nrow=1,ncol=length(billable_hours)))
+names(space) <- names(billable_hours); row.names(space) <- "--goodwill portion only--"
+
+billable_and_goodwill <- rbind(billable_hours, space, goodwill_hours)
 
 #////////////////////////////////
 # Flat Fee Hours by service level
@@ -90,7 +108,6 @@ scheduled_services[is.na(scheduled_services)] <- 0
 #////////////////////////////////
 all_time <- aggregate(Hours ~ monthyear +  role + User , data = timelog_with_status_df, FUN = sum)
 all_time[all_time$User %in% "Jane Cavanaugh" & all_time$monthyear %in% c("14-09", "14-10", "14-11"),]$role <- "PSS"
-#all_time[all_time$User %in% "Alissa Clausen",]$role <- "PSS"
 count_by_role <- aggregate(Hours ~ monthyear + User + role , data = all_time, FUN = sum)
 count_by_role <- ddply(count_by_role, .(monthyear, role), summarise, count = length(unique(User)))
 count_by_role <- dcast(count_by_role, role ~ monthyear, sum, value.var = "count")
@@ -299,7 +316,7 @@ goodwill_balance <- data.frame(date = Sys.Date(), goodwill_balance = sum(unique_
 
 #****************** write results to file
 setwd("C:/R/workspace/42/output")
-write.xlsx(x = billable_hours, file = "42_data.xlsx",sheetName = "billable_hours", row.names = TRUE)
+write.xlsx(x = billable_and_goodwill, file = "42_data.xlsx",sheetName = "billable_hours", row.names = TRUE)
 write.xlsx(x = project_hours, file = "42_data.xlsx",sheetName = "project_hours", row.names = TRUE, append = TRUE)
 write.xlsx(x = scheduled_services, file = "42_data.xlsx",sheetName = "scheduled_services", row.names = TRUE, append = TRUE)
 write.xlsx(x = count_by_role, file = "42_data.xlsx",sheetName = "count_by_role", row.names = FALSE, append = TRUE)
