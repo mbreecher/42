@@ -32,7 +32,8 @@ print(proc.time() - ptm)
 
 #manual processing of roles
 timelog_with_status_df[timelog_with_status_df$User %in% "Jane Cavanaugh" & timelog_with_status_df$monthyear %in% c("14-09", "14-10", "14-11"),]$role <- "PSS"
-timelog_with_status_df[timelog_with_status_df$User %in% "Jane Cavanaugh" & timelog_with_status_df$monthyear %in% c("14-09", "14-10", "14-11"),]$is_psm <- 1
+timelog_with_status_df[timelog_with_status_df$User.Title %in% "Professional Services Intern",]$role <- "Intern"
+timelog_with_status_df[timelog_with_status_df$role %in% c("PSS", "Intern"),]$is_psm <- 1
 
 #peel off and remove non-ps time
 non_ps_time <- timelog_with_status_df[timelog_with_status_df$is_psm %in% 0 | is.na(timelog_with_status_df$is_psm),] #grab 0s and NAs
@@ -248,15 +249,15 @@ collapsed_opps$discount <- 1 #instantiate field with full discount
 collapsed_opps[!collapsed_opps$Sales.Price %in% 0,]$discount <- 1 - (collapsed_opps[!collapsed_opps$Sales.Price %in% 0,]$Sales.Price / collapsed_opps[!collapsed_opps$Sales.Price %in% 0,]$List.Price)
 
 # split projects into historical and future
-#historical (completed) projects
-sales_info_history <- aggregate(Sales.Price ~ monthyear + Service.Type + Form.Type, 
-                    data = collapsed_opps[collapsed_opps$monthyear <= format(Sys.Date(), format = "%y-%m") & collapsed_opps$Status %in% "Completed",], FUN = sum)
-sales_info_history$type <- "history"
-
-#future (active or not started) projects
-sales_info_predicted <- aggregate(Sales.Price ~ monthyear + Service.Type + Form.Type, 
-                    data = collapsed_opps[collapsed_opps$monthyear >= format(Sys.Date(), format = "%y-%m") & !collapsed_opps$Status %in% "Completed",], FUN = sum)
-sales_info_predicted$type <- "predicted"
+  #historical (completed) projects
+  sales_info_history <- aggregate(Sales.Price ~ monthyear + Service.Type + Form.Type, 
+                      data = collapsed_opps[collapsed_opps$monthyear <= format(Sys.Date(), format = "%y-%m") & collapsed_opps$Status %in% "Completed",], FUN = sum)
+  sales_info_history$type <- "history"
+  
+  #future (active or not started) projects
+  sales_info_predicted <- aggregate(Sales.Price ~ monthyear + Service.Type + Form.Type, 
+                      data = collapsed_opps[collapsed_opps$monthyear >= format(Sys.Date(), format = "%y-%m") & !collapsed_opps$Status %in% "Completed",], FUN = sum)
+  sales_info_predicted$type <- "predicted"
 
 # now combine time
 sales_info <- rbind(sales_info_history, sales_info_predicted)
