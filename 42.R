@@ -83,7 +83,7 @@ billable_and_goodwill <- rbind(billable_hours, space, goodwill_hours, cs_space, 
 project_time <- aggregate(Hours ~ monthyear +  Service.Type + Form.Type, 
                           data = timelog_with_status_df[timelog_with_status_df$Billable %in% 0 & !is.na(timelog_with_status_df$Hours),], FUN = sum)
 project_time$header <- paste(project_time$Form.Type, project_time$Service.Type, sep = " ")
-groups <- c("10-K Detail Tagging","10-Q Detail Tagging","10-K Full Review","10-Q Full Review","10-K Standard Import","10-Q Standard Import","10-K Full Service Standard Import","10-Q Full Service Standard Import","10-K Maintenance","10-Q Maintenance","K-K Roll Forward","Q-K Roll Forward","Q-Q Roll Forward","K-Q Roll Forward","Q-K Full Service Roll Forward","10-K Full Service Roll Forward","10-Q Full Service Roll Forward")
+groups <- c("10-K Detail Tagging","10-Q Detail Tagging","10-K Full Review","10-Q Full Review","10-K Standard Import","10-Q Standard Import","10-K Full Service Standard Import","10-Q Full Service Standard Import","10-K Maintenance","10-Q Maintenance","K-K Roll Forward","Q-K Roll Forward","Q-Q Roll Forward","K-Q Roll Forward","Q-K Full Service Roll Forward","10-K Full Service Roll Forward","10-Q Full Service Roll Forward", "TM Migration")
 project_time[!(project_time$header %in% groups),]$header <- "Other Services"
 
 #cast wide to prepare for rbind
