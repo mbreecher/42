@@ -145,7 +145,7 @@ names(time_by_role) <- monthyear_to_written(names(time_by_role))
 #////////////////////////////////
 #use application log to identify filings
 
-app_data <- import_app_filing_data()
+app_data <- load_app_filing_data()
 app_data <- app_data[!is.na(app_data$Fact.Cnt),]
 app_data <- app_data[app_data$Form.Type %in% c("10-Q", "10-K", "10-K/A", "10-Q/A"),] #limit to form 10
 app_data$software <- "WebFilings"
