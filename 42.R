@@ -73,8 +73,19 @@ space <- data.frame(matrix(c(rep.int("",length(billable_hours))),nrow=1,ncol=len
 names(space) <- names(billable_hours); row.names(space) <- "goodwill portion only"
 cs_space <- space; row.names(cs_space) <- "cs time (not included above)"
 
+for(name in names(billable_hours)[!names(billable_hours) %in% names(cs_hours_wide)]){
+  dummy_df <- c()
+  for(row in row.names(cs_hours_wide)){
+    dummy_df <- c(dummy_df, 0)
+  }
+  dummy_df <- data.frame(matrix(dummy_df))
+  row.names(dummy_df) <- row.names(cs_hours_wide)
+  names(dummy_df) <- name
+  
+  cs_hours_wide <- cbind(cs_hours_wide, dummy_df)
+}
 
-billable_and_goodwill <- rbind.fill(billable_hours, space, goodwill_hours, cs_space, cs_hours_wide)
+billable_and_goodwill <- rbind(billable_hours, space, goodwill_hours, cs_space, cs_hours_wide)
 
 #////////////////////////////////
 # Flat Fee Hours by service level
