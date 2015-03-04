@@ -74,7 +74,7 @@ names(space) <- names(billable_hours); row.names(space) <- "goodwill portion onl
 cs_space <- space; row.names(cs_space) <- "cs time (not included above)"
 
 
-billable_and_goodwill <- rbind(billable_hours, space, goodwill_hours, cs_space, cs_hours_wide)
+billable_and_goodwill <- rbind.fill(billable_hours, space, goodwill_hours, cs_space, cs_hours_wide)
 
 #////////////////////////////////
 # Flat Fee Hours by service level
