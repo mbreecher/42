@@ -117,10 +117,10 @@ services$monthyear <- format(services$filing.estimate, format = "%y-%m")
 services <- services[order(services$filing.estimate),]
 
 scheduled_by_month <- aggregate(Services.ID ~ monthyear + Service.Type + Form.Type, data = services, FUN = length)
-scheduled_by_month <- scheduled_by_month[!scheduled_by_month$Service.Type %in% c("Migration"),] #remove migrations
+#scheduled_by_month <- scheduled_by_month[!scheduled_by_month$Service.Type %in% c("Migration"),] #remove migrations
 scheduled_by_month[scheduled_by_month$Service.Type %in% c("Full Service Roll Forward") & scheduled_by_month$Form.Type %in% c("Q-K", "K-K"),]$Form.Type <- "10-K"
 scheduled_by_month$Service.Name <- paste(scheduled_by_month$Form.Type, scheduled_by_month$Service.Type, sep = " ")
-name_order <- c("10-K Detail Tagging","10-Q Detail Tagging","10-K Full Review","10-Q Full Review","10-K Standard Import","10-Q Standard Import", "10-K Full Service Standard Import","10-Q Full Service Standard Import","10-K Maintenance","10-Q Maintenance","K-K Roll Forward","Q-K Roll Forward","Q-Q Roll Forward","K-Q Roll Forward","10-K Full Service Roll Forward","10-Q Full Service Roll Forward")
+name_order <- c("10-K Detail Tagging","10-Q Detail Tagging","10-K Full Review","10-Q Full Review","10-K Standard Import","10-Q Standard Import", "10-K Full Service Standard Import","10-Q Full Service Standard Import","10-K Maintenance","10-Q Maintenance","K-K Roll Forward","Q-K Roll Forward","Q-Q Roll Forward","K-Q Roll Forward","10-K Full Service Roll Forward","10-Q Full Service Roll Forward", "TM Migration")
 scheduled_by_month[!scheduled_by_month$Service.Name %in% name_order,]$Service.Name <- "Other Services"
 
 #cast wide to prepare for rbind
@@ -273,7 +273,7 @@ collapsed_opps[!collapsed_opps$Sales.Price %in% 0,]$discount <- 1 - (collapsed_o
 # now combine time
 sales_info <- rbind(sales_info_history, sales_info_predicted)
 sales_info$header <- paste(sales_info$Form.Type, sales_info$Service.Type, sep = " ")
-groups <- c("10-K Detail Tagging","10-Q Detail Tagging","10-K Full Review","10-Q Full Review","10-K Standard Import","10-Q Standard Import","10-K Full Service Standard Import","10-Q Full Service Standard Import","10-K Maintenance","10-Q Maintenance","K-K Roll Forward","Q-K Roll Forward","Q-Q Roll Forward","K-Q Roll Forward","10-K Full Service Roll Forward","10-Q Full Service Roll Forward")
+groups <- c("10-K Detail Tagging","10-Q Detail Tagging","10-K Full Review","10-Q Full Review","10-K Standard Import","10-Q Standard Import","10-K Full Service Standard Import","10-Q Full Service Standard Import","10-K Maintenance","10-Q Maintenance","K-K Roll Forward","Q-K Roll Forward","Q-Q Roll Forward","K-Q Roll Forward","10-K Full Service Roll Forward","10-Q Full Service Roll Forward", "TM Migration")
 sales_info[!(sales_info$header %in% groups),]$header <- "Other Services"
 sales_info$monthyear_amended <- paste(sales_info$monthyear, sales_info$type, sep = "\n")
 
