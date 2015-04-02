@@ -1,5 +1,6 @@
 /qa
 /output
+/datastore
 Key_assumptions.docx
 *.tmp
 *.docx
