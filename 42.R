@@ -26,24 +26,39 @@ setwd("C:/R/workspace/42")
 source("helpers.R")
 
 #all billable time
-ptm <- proc.time()
-timelog_with_status_df <- timelog_with_status(include_cs = T) #~12 minutes
-print(proc.time() - ptm)
 
-#manual processing of roles
-timelog_with_status_df[timelog_with_status_df$User %in% "Jane Cavanaugh" & timelog_with_status_df$monthyear %in% c("14-09", "14-10", "14-11"),]$role <- "PSS"
-timelog_with_status_df[timelog_with_status_df$User.Title %in% "Professional Services Intern",]$role <- "Intern"
-timelog_with_status_df[timelog_with_status_df$role %in% c("PSS", "Intern"),]$is_psm <- 1
-timelog_with_status_df[timelog_with_status_df$role %in% c("Sr. PSM"),]$role <- "Sr PSM"
-timelog_with_status_df[timelog_with_status_df$role %in% c("PSM Team Manager"),]$role <- "TM"
+#initial timelog import with processing. Store info and bypass when no new info available
+setwd("c:/r/workspace/source")
+timelog_data_age <- max(c(file.info('timelog_for_R.csv')$mtime,file.info('time_entry_detail_report__complete_report.csv')$mtime))
+setwd("c:/r/workspace/42/datastore")
 
-#peel off and remove non-ps time
-non_ps_time <- timelog_with_status_df[timelog_with_status_df$is_psm %in% 0 | is.na(timelog_with_status_df$is_psm),] #grab 0s and NAs
-agg_non_ps <- aggregate(Hours ~ monthyear + Service.Type, data = non_ps_time[non_ps_time$Billable %in% 1,], FUN = sum)
-agg_non_ps[agg_non_ps$Service.Type %in% "",]$Service.Type <- "Other"
-timelog_with_status_df <- timelog_with_status_df[timelog_with_status_df$is_psm %in% 1,] #remove non-ps time
+if(file.info("timelog_with_status.Rda")$mtime > timelog_data_age){
+  print("no change in timelog data, loading historical info")
+  timelog_with_status_df <- readRDS(file = "timelog_with_status.Rda")
+}else{
+  ptm <- proc.time()
+  print("updated timelog data available, processing...")
+  timelog_with_status_df <- timelog_with_status(include_cs = T) #~12 minutes
+  print(proc.time() - ptm)
+  
+  #manual processing of roles
+  timelog_with_status_df[timelog_with_status_df$User %in% "Jane Cavanaugh" & timelog_with_status_df$monthyear %in% c("14-09", "14-10", "14-11"),]$role <- "PSS"
+  timelog_with_status_df[timelog_with_status_df$User.Title %in% "Professional Services Intern",]$role <- "Intern"
+  timelog_with_status_df[timelog_with_status_df$role %in% c("PSS", "Intern"),]$is_psm <- 1
+  timelog_with_status_df[timelog_with_status_df$role %in% c("Sr. PSM"),]$role <- "Sr PSM"
+  timelog_with_status_df[timelog_with_status_df$role %in% c("PSM Team Manager"),]$role <- "TM"
+  
+  #peel off and remove non-ps time
+  non_ps_time <- timelog_with_status_df[timelog_with_status_df$is_psm %in% 0 | is.na(timelog_with_status_df$is_psm),] #grab 0s and NAs
+  agg_non_ps <- aggregate(Hours ~ monthyear + Service.Type, data = non_ps_time[non_ps_time$Billable %in% 1,], FUN = sum)
+  agg_non_ps[agg_non_ps$Service.Type %in% "",]$Service.Type <- "Other"
+  timelog_with_status_df <- timelog_with_status_df[timelog_with_status_df$is_psm %in% 1,] #remove non-ps time
+  
+  timelog_with_status_df <- timelog_with_status_df[order(timelog_with_status_df$Date),]
+  setwd("c:/r/workspace/42/datastore")
+  saveRDS(timelog_with_status_df, file = "timelog_with_status.Rda")
+}
 
-timelog_with_status_df <- timelog_with_status_df[order(timelog_with_status_df$Date),]
 agg_billable <- aggregate(Hours ~ monthyear +  xbrl_status + form_type, 
                           data = timelog_with_status_df[timelog_with_status_df$Billable %in% 1,], FUN = sum)
 
