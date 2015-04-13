@@ -35,6 +35,10 @@ setwd("c:/r/workspace/42/datastore")
 if(file.info("timelog_with_status.Rda")$mtime > timelog_data_age){
   print("no change in timelog data, loading historical info")
   timelog_with_status_df <- readRDS(file = "timelog_with_status.Rda")
+  non_ps_time <- timelog_with_status_df[timelog_with_status_df$is_psm %in% 0 | is.na(timelog_with_status_df$is_psm),] #grab 0s and NAs
+  agg_non_ps <- aggregate(Hours ~ monthyear + Service.Type, data = non_ps_time[non_ps_time$Billable %in% 1,], FUN = sum)
+  agg_non_ps[agg_non_ps$Service.Type %in% "",]$Service.Type <- "Other"
+  timelog_with_status_df <- timelog_with_status_df[timelog_with_status_df$is_psm %in% 1,] #remove non-ps time
 }else{
   ptm <- proc.time()
   print("updated timelog data available, processing...")
@@ -52,11 +56,11 @@ if(file.info("timelog_with_status.Rda")$mtime > timelog_data_age){
   non_ps_time <- timelog_with_status_df[timelog_with_status_df$is_psm %in% 0 | is.na(timelog_with_status_df$is_psm),] #grab 0s and NAs
   agg_non_ps <- aggregate(Hours ~ monthyear + Service.Type, data = non_ps_time[non_ps_time$Billable %in% 1,], FUN = sum)
   agg_non_ps[agg_non_ps$Service.Type %in% "",]$Service.Type <- "Other"
-  timelog_with_status_df <- timelog_with_status_df[timelog_with_status_df$is_psm %in% 1,] #remove non-ps time
   
   timelog_with_status_df <- timelog_with_status_df[order(timelog_with_status_df$Date),]
   setwd("c:/r/workspace/42/datastore")
   saveRDS(timelog_with_status_df, file = "timelog_with_status.Rda")
+  timelog_with_status_df <- timelog_with_status_df[timelog_with_status_df$is_psm %in% 1,] #remove non-ps time
 }
 
 agg_billable <- aggregate(Hours ~ monthyear +  xbrl_status + form_type, 
@@ -103,6 +107,10 @@ for(name in names(billable_hours)[!names(billable_hours) %in% names(cs_hours_wid
   cs_hours_wide <- cbind(cs_hours_wide, dummy_df)
 }
 
+# add column to goodwill hours df if none used
+for(name in names(space)[!names(space)%in% names(goodwill_hours)]){
+  goodwill_hours[,name] <- NA
+}
 billable_and_goodwill <- rbind(billable_hours, space, goodwill_hours, cs_space, cs_hours_wide)
 
 #////////////////////////////////
