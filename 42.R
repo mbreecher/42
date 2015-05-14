@@ -1,6 +1,6 @@
 #the answer to life, the universe and everything
 #dependencies:
-#timelog_for_R.csv 
+#time_entry_detail_report__complete_report.csv
 #services_for_ps_history_R.csv
 #ps_start_dates.csv
 #opportunities_for_R.csv
@@ -35,10 +35,6 @@ setwd("c:/r/workspace/42/datastore")
 if(file.info("timelog_with_status.Rda")$mtime > timelog_data_age){
   print("no change in timelog data, loading historical info")
   timelog_with_status_df <- readRDS(file = "timelog_with_status.Rda")
-  non_ps_time <- timelog_with_status_df[timelog_with_status_df$is_psm %in% 0 | is.na(timelog_with_status_df$is_psm),] #grab 0s and NAs
-  agg_non_ps <- aggregate(Hours ~ monthyear + Service.Type, data = non_ps_time[non_ps_time$Billable %in% 1,], FUN = sum)
-  agg_non_ps[agg_non_ps$Service.Type %in% "",]$Service.Type <- "Other"
-  timelog_with_status_df <- timelog_with_status_df[timelog_with_status_df$is_psm %in% 1,] #remove non-ps time
 }else{
   ptm <- proc.time()
   print("updated timelog data available, processing...")
@@ -52,19 +48,19 @@ if(file.info("timelog_with_status.Rda")$mtime > timelog_data_age){
   timelog_with_status_df[timelog_with_status_df$role %in% c("Sr. PSM"),]$role <- "Sr PSM"
   timelog_with_status_df[timelog_with_status_df$role %in% c("PSM Team Manager"),]$role <- "TM"
   
-  #peel off and remove non-ps time
-  non_ps_time <- timelog_with_status_df[timelog_with_status_df$is_psm %in% 0 | is.na(timelog_with_status_df$is_psm),] #grab 0s and NAs
-  agg_non_ps <- aggregate(Hours ~ monthyear + Service.Type, data = non_ps_time[non_ps_time$Billable %in% 1,], FUN = sum)
-  agg_non_ps[agg_non_ps$Service.Type %in% "",]$Service.Type <- "Other"
-  
   timelog_with_status_df <- timelog_with_status_df[order(timelog_with_status_df$Date),]
   setwd("c:/r/workspace/42/datastore")
   saveRDS(timelog_with_status_df, file = "timelog_with_status.Rda")
-  timelog_with_status_df <- timelog_with_status_df[timelog_with_status_df$is_psm %in% 1,] #remove non-ps time
 }
 
+#peel off and remove non-ps time
+non_ps_time <- timelog_with_status_df[timelog_with_status_df$is_psm %in% 0 | is.na(timelog_with_status_df$is_psm),] #grab 0s and NAs
+agg_non_ps <- aggregate(Hours ~ monthyear + Service.Type, data = non_ps_time[non_ps_time$Billable %in% 1,], FUN = sum)
+agg_non_ps[agg_non_ps$Service.Type %in% "",]$Service.Type <- "Other"
+
 agg_billable <- aggregate(Hours ~ monthyear +  xbrl_status + form_type, 
-                          data = timelog_with_status_df[timelog_with_status_df$Billable %in% 1,], FUN = sum)
+                          data = timelog_with_status_df[timelog_with_status_df$Billable %in% 1 &
+                                                          timelog_with_status_df$is_psm %in% 1,], FUN = sum)
 
 billable_hours <- dcast(agg_billable, xbrl_status + form_type ~ monthyear, sum, value.var = "Hours")
 names(billable_hours) <- monthyear_to_written(names(billable_hours))
@@ -80,7 +76,8 @@ names(cs_hours_wide) <- monthyear_to_written(names(cs_hours_wide))
 
 #report goodwill hours separately
 agg_goodwill <- aggregate(Hours ~ monthyear +  xbrl_status + form_type, 
-                          data = timelog_with_status_df[timelog_with_status_df$Billable %in% 1 & 
+                          data = timelog_with_status_df[timelog_with_status_df$Billable %in% 1 &
+                                                          timelog_with_status_df$is_psm %in% 1 & 
                                                           timelog_with_status_df$Service %in% "Goodwill Hours",], 
                           FUN = sum)
 goodwill_hours <- dcast(agg_goodwill, xbrl_status + form_type ~ monthyear, sum, value.var = "Hours")
@@ -118,7 +115,9 @@ billable_and_goodwill <- rbind(billable_hours, space, goodwill_hours, cs_space, 
 #////////////////////////////////
 
 project_time <- aggregate(Hours ~ monthyear +  Service.Type + Form.Type, 
-                          data = timelog_with_status_df[timelog_with_status_df$Billable %in% 0 & !is.na(timelog_with_status_df$Hours),], FUN = sum)
+                          data = timelog_with_status_df[timelog_with_status_df$Billable %in% 0 &
+                                                          timelog_with_status_df$is_psm %in% 1 &
+                                                          !is.na(timelog_with_status_df$Hours),], FUN = sum)
 project_time$header <- paste(project_time$Form.Type, project_time$Service.Type, sep = " ")
 groups <- c("10-K Detail Tagging","10-Q Detail Tagging","10-K Full Review","10-Q Full Review","10-K Standard Import","10-Q Standard Import","10-K Full Service Standard Import","10-Q Full Service Standard Import","10-K Maintenance","10-Q Maintenance","K-K Roll Forward","Q-K Roll Forward","Q-Q Roll Forward","K-Q Roll Forward","Q-K Full Service Roll Forward","10-K Full Service Roll Forward","10-Q Full Service Roll Forward", "TM Migration")
 project_time[!(project_time$header %in% groups),]$header <- "Other Services"
@@ -161,7 +160,8 @@ scheduled_services[is.na(scheduled_services)] <- 0
 #////////////////////////////////
 # Full Time Employees - count
 #////////////////////////////////
-all_time <- aggregate(Hours ~ monthyear +  role + User , data = timelog_with_status_df, FUN = sum)
+all_time <- aggregate(Hours ~ monthyear +  role + User , 
+                      data = timelog_with_status_df[timelog_with_status_df$is_psm %in% 1,], FUN = sum)
 count_by_role <- aggregate(Hours ~ monthyear + User + role , data = all_time, FUN = sum)
 count_by_role <- ddply(count_by_role, .(monthyear, role), summarise, count = length(unique(User)))
 count_by_role <- dcast(count_by_role, role ~ monthyear, sum, value.var = "count")
@@ -223,6 +223,7 @@ if(file.info("filing_and_customer.Rda")$mtime > filings_data_age){
   app_data_cust_status <- ddply(app_data, .var = c("Company.Name", "monthyear"), .fun = function(x){
     status = NA
     time_cust <- timelog_with_status_df[timelog_with_status_df$Account.Name %in% x$Company.Name &
+                                          timelog_with_status_df$is_psm %in% 1 &
                                           timelog_with_status_df$Date <= max(x$Filing.Date) &
                                           timelog_with_status_df$Date >= min(x$Filing.Date) - 45,]
     if(dim(time_cust)[1] == 0){
@@ -243,6 +244,7 @@ if(file.info("filing_and_customer.Rda")$mtime > filings_data_age){
     status = NA
     
     time_reg <- timelog_with_status_df[timelog_with_status_df$CIK %in% x$Registrant.CIK &
+                                         timelog_with_status_df$is_psm %in% 1 &
                                           timelog_with_status_df$Date <= max(x$Filing.Date) &
                                           timelog_with_status_df$Date >= min(x$Filing.Date) - 45,]
   
@@ -288,8 +290,6 @@ if(file.info("filing_and_customer.Rda")$mtime > filings_data_age){
 #////////////////////////////////
 collapsed_opps <- collapsed_opportunities() # ~2.75 minutes
 collapsed_opps <- collapsed_opps[order(collapsed_opps$filing.estimate),]
-completed <- unique(services[,names(services) %in% c("Services.ID", "Status")])
-collapsed_opps <- merge(collapsed_opps, completed, by = "Services.ID", all.x = T)
 
 #make list price sales price if list price == 0 or na
 collapsed_opps[collapsed_opps$List.Price %in% 0 | is.na(collapsed_opps$List.Price),]$List.Price <- collapsed_opps[collapsed_opps$List.Price %in% 0  | is.na(collapsed_opps$List.Price),]$Sales.Price
@@ -374,7 +374,8 @@ names(discount_20_to_99_wide) <- monthyear_to_written(names(discount_20_to_99_wi
 #////////////////////////////////
 # Goodwill Hours used by month
 #////////////////////////////////
-wide_goodwill_used <- dcast(timelog_with_status_df[timelog_with_status_df$Service %in% c("Goodwill Hours"),],Service ~ monthyear, sum, value.var = "Hours" )
+wide_goodwill_used <- dcast(timelog_with_status_df[timelog_with_status_df$Service %in% c("Goodwill Hours") &
+                                                     timelog_with_status_df$is_psm %in% 1,],Service ~ monthyear, sum, value.var = "Hours" )
 names(wide_goodwill_used) <- monthyear_to_written(names(wide_goodwill_used))
 
 #////////////////////////////////
