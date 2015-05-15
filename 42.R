@@ -137,7 +137,7 @@ project_hours[is.na(project_hours)] <- 0
 hierarchy <- import_hierarchy() #for some reason, not taking when imported within function
 services <- import_services(output = 'expanded')
 
-services <- services[services$filing.estimate > "2013-06-30",]
+services <- services[services$filing.estimate > "2013-06-30" & services$CS.PS %in% c("PS", "CS/PS"),]
 services$monthyear <- format(services$filing.estimate, format = "%y-%m")
 services <- services[order(services$filing.estimate),]
 
@@ -289,6 +289,7 @@ if(file.info("filing_and_customer.Rda")$mtime > filings_data_age){
 # Net discounted sales price
 #////////////////////////////////
 collapsed_opps <- collapsed_opportunities() # ~2.75 minutes
+collapsed_opps <- collapsed_opps[collapsed_opps$filing.estimate > "2013-06-30",]
 collapsed_opps <- collapsed_opps[order(collapsed_opps$filing.estimate),]
 
 #make list price sales price if list price == 0 or na
