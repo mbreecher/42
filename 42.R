@@ -316,6 +316,9 @@ collapsed_opps[!collapsed_opps$Sales.Price %in% 0,]$discount <- 1 - (collapsed_o
 
 # now combine time
 sales_info <- rbind(sales_info_history, sales_info_predicted)
+sales_info[sales_info$Service.Type %in% "Migration",]$Form.Type <- "TM"
+sales_info[sales_info$Service.Type %in% "Full Service Roll Forward" & 
+             sales_info$Form.Type %in% "Q-K",]$Form.Type <- "10-K"
 sales_info$header <- paste(sales_info$Form.Type, sales_info$Service.Type, sep = " ")
 groups <- c("10-K Detail Tagging","10-Q Detail Tagging","10-K Full Review","10-Q Full Review","10-K Standard Import","10-Q Standard Import","10-K Full Service Standard Import","10-Q Full Service Standard Import","10-K Maintenance","10-Q Maintenance","K-K Roll Forward","Q-K Roll Forward","Q-Q Roll Forward","K-Q Roll Forward","10-K Full Service Roll Forward","10-Q Full Service Roll Forward", "TM Migration")
 sales_info[!(sales_info$header %in% groups),]$header <- "Other Services"
