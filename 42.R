@@ -377,18 +377,18 @@ discount_20_to_99 <- aggregate(Services.ID ~ monthyear + Service.Type, data = co
 discount_20_to_99_wide <- dcast(discount_20_to_99, Service.Type ~ monthyear, sum, value.var = "Services.ID")
 names(discount_20_to_99_wide) <- monthyear_to_written(names(discount_20_to_99_wide))
 
-#////////////////////////////////
-# Goodwill Hours used by month
-#////////////////////////////////
-wide_goodwill_used <- dcast(timelog_with_status_df[timelog_with_status_df$Service %in% c("Goodwill Hours") &
-                                                     timelog_with_status_df$is_psm %in% 1,],Service ~ monthyear, sum, value.var = "Hours" )
-names(wide_goodwill_used) <- monthyear_to_written(names(wide_goodwill_used))
-
-#////////////////////////////////
-# Goodwill Balance
-#////////////////////////////////
-unique_customers <- unique(services[!is.na(services$Goodwill.Hours.Available),names(services) %in% c("Account.Name","Goodwill.Hours.Available" )])
-goodwill_balance <- data.frame(date = Sys.Date(), goodwill_balance = sum(unique_customers$Goodwill.Hours.Available))
+# #////////////////////////////////
+# # Goodwill Hours used by month
+# #////////////////////////////////
+# wide_goodwill_used <- dcast(timelog_with_status_df[timelog_with_status_df$Service %in% c("Goodwill Hours") &
+#                                                      timelog_with_status_df$is_psm %in% 1,],Service ~ monthyear, sum, value.var = "Hours" )
+# names(wide_goodwill_used) <- monthyear_to_written(names(wide_goodwill_used))
+# 
+# #////////////////////////////////
+# # Goodwill Balance
+# #////////////////////////////////
+# unique_customers <- unique(services[!is.na(services$Goodwill.Hours.Available),names(services) %in% c("Account.Name","Goodwill.Hours.Available" )])
+# goodwill_balance <- data.frame(date = Sys.Date(), goodwill_balance = sum(unique_customers$Goodwill.Hours.Available))
 
 #****************** write results to file
 setwd("C:/R/workspace/42/output")
@@ -402,8 +402,8 @@ write.xlsx(x = sales_info_wide, file = "42_data.xlsx",sheetName = "net_sales", r
 write.xlsx(x = discount_groups_wide, file = "42_data.xlsx",sheetName = "services by discount", row.names = FALSE, append = TRUE)
 write.xlsx(x = full_discount_wide, file = "42_data.xlsx",sheetName = "Full discount", row.names = FALSE, append = TRUE)
 write.xlsx(x = discount_20_to_99_wide, file = "42_data.xlsx",sheetName = "20-99 discount", row.names = FALSE, append = TRUE)
-write.xlsx(x = wide_goodwill_used, file = "42_data.xlsx",sheetName = "Goodwill Hours Used", row.names = FALSE, append = TRUE)
-write.xlsx(x = goodwill_balance, file = "42_data.xlsx",sheetName = "Goodwill Balance", row.names = FALSE, append = TRUE)
+# write.xlsx(x = wide_goodwill_used, file = "42_data.xlsx",sheetName = "Goodwill Hours Used", row.names = FALSE, append = TRUE)
+# write.xlsx(x = goodwill_balance, file = "42_data.xlsx",sheetName = "Goodwill Balance", row.names = FALSE, append = TRUE)
 
 proc.time() - start
 
