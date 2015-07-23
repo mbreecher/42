@@ -234,7 +234,7 @@ if(file.info("filing_and_customer.Rda")$mtime > filings_data_age){
       status = "Full Service"
     }else if(TRUE %in% (time_cust$Service.Type %in% c("Maintenance Package", "Maintenance"))){
       status = "Basic"
-    }else if(TRUE %in% (time_cust$Service.Type %in% c("Reserve Hours"))){
+    }else if(TRUE %in% (time_cust$Service.Type %in% c("Reserve Hours", "Other"))){
       status = "DIY w/ hours"
     }else{
       status = "Inactive DIY"
@@ -256,7 +256,7 @@ if(file.info("filing_and_customer.Rda")$mtime > filings_data_age){
       status = "Full Service "
     }else if(TRUE %in% (time_reg$Service.Type %in% c("Maintenance Package", "Maintenance"))){
       status = "Basic "
-    }else if(TRUE %in% (time_reg$Service.Type %in% c("Reserve Hours"))){
+    }else if(TRUE %in% (time_reg$Service.Type %in% c("Reserve Hours", "Other"))){
       status = "DIY w/ hours "
     }else{
       status = "Inactive DIY "
