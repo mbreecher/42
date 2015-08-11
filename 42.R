@@ -109,7 +109,7 @@ for(name in names(space)[!names(space)%in% names(goodwill_hours)]){
   goodwill_hours[,name] <- NA
 }
 billable_and_goodwill <- rbind(billable_hours, space, goodwill_hours, cs_space, cs_hours_wide)
-billable_and_goodwill[is.na(billable_and_goodwill)] <- ""
+billable_and_goodwill[is.na(billable_and_goodwill)] <- 0
 
 #////////////////////////////////
 # Flat Fee Hours by service level
