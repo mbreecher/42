@@ -7,6 +7,7 @@
 #accounts_with_year_end.csv
 #contracts_for_pshistory.csv
 #hierarchy.csv
+#churned_customers.csv
 start = proc.time() #expect ~16 minutes
 library(plyr)
 library(reshape2)
@@ -391,6 +392,27 @@ names(discount_20_to_99_wide) <- monthyear_to_written(names(discount_20_to_99_wi
 # unique_customers <- unique(services[!is.na(services$Goodwill.Hours.Available),names(services) %in% c("Account.Name","Goodwill.Hours.Available" )])
 # goodwill_balance <- data.frame(date = Sys.Date(), goodwill_balance = sum(unique_customers$Goodwill.Hours.Available))
 
+#////////////////////////////////
+# Goodwill Hours used by month
+#////////////////////////////////
+setwd("C:/R/workspace/source")
+churned <- read.csv("churned_customers.csv", header = T , stringsAsFactors=F)
+print(paste("churned_customers.csv", "last updated", round(difftime(Sys.time(), file.info("churned_customers.csv")$mtime, units = "days"), digits = 1), "days ago", sep = " "))
+churned$Churned.Effective.Date <- as.Date(churned$Churned.Effective.Date, format = "%m/%d/%Y")
+churned$Date.Churned.Marked <- as.Date(churned$Date.Churned.Marked, format = "%m/%d/%Y")
+churned$quarter <- paste(format(churned$Churned.Effective.Date, format = "%Y"),
+                         "-Q", ceiling(as.numeric(format(churned$Churned.Effective.Date, format = "%m"))/3),
+                         sep = "")
+churned[is.na(churned$Churned.Effective.Date),]$quarter <- paste(format(churned[is.na(churned$Churned.Effective.Date),]$Date.Churned.Marked, format = "%Y"),
+                                                  "-Q", ceiling(as.numeric(format(churned[is.na(churned$Churned.Effective.Date),]$Date.Churned.Marked, format = "%m"))/3),
+                                                  sep = "")
+churned[churned$quarter %in% "NA-QNA",]$quarter <- NA
+churned[grepl("Acquired", churned$Churned.Detail, ignore.case = T),]$Churned.Detail <- "Acquired"
+churned[grepl("Went Private", churned$Churned.Detail, ignore.case = T),]$Churned.Detail <- "Went Private"
+churned[churned$Churned.Detail %in% c("Delinquent/Bankrupt", "Delayed IPO"),]$Churned.Detail <- "Other"
+
+churned_result <- dcast(churned, Churned.Detail ~ quarter, length, value.var = "Account.ID")
+
 #****************** write results to file
 setwd("C:/R/workspace/42/output")
 write.xlsx(x = billable_and_goodwill, file = "42_data.xlsx",sheetName = "billable_hours", row.names = TRUE)
@@ -403,6 +425,7 @@ write.xlsx(x = sales_info_wide, file = "42_data.xlsx",sheetName = "net_sales", r
 write.xlsx(x = discount_groups_wide, file = "42_data.xlsx",sheetName = "services by discount", row.names = FALSE, append = TRUE)
 write.xlsx(x = full_discount_wide, file = "42_data.xlsx",sheetName = "Full discount", row.names = FALSE, append = TRUE)
 write.xlsx(x = discount_20_to_99_wide, file = "42_data.xlsx",sheetName = "20-99 discount", row.names = FALSE, append = TRUE)
+write.xlsx(x = churned_result, file = "42_data.xlsx",sheetName = "churned", row.names = FALSE, append = TRUE)
 # write.xlsx(x = wide_goodwill_used, file = "42_data.xlsx",sheetName = "Goodwill Hours Used", row.names = FALSE, append = TRUE)
 # write.xlsx(x = goodwill_balance, file = "42_data.xlsx",sheetName = "Goodwill Balance", row.names = FALSE, append = TRUE)
 
