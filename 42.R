@@ -8,7 +8,7 @@
 #contracts_for_pshistory.csv
 #hierarchy.csv
 #churned_customers.csv
-start = proc.time() #expect ~16 minutes
+start = proc.time() #expect ~45 minutes
 library(plyr)
 library(reshape2)
 library(xlsx)
@@ -30,11 +30,14 @@ source("helpers.R")
 
 #initial timelog import with processing. Store info and bypass when no new info available
 setwd("c:/r/workspace/source")
-timelog_data_age <- max(c(file.info('timelog_for_R.csv')$mtime,file.info('time_entry_detail_report__complete_report.csv')$mtime))
+sf_timelog_data_age <- file.info('timelog_for_R.csv')$mtime
+oa_timelog_data_age <- file.info('time_entry_detail_report__complete_report.csv')$mtime
 setwd("c:/r/workspace/42/datastore")
 
-if(file.info("timelog_with_status.Rda")$mtime > timelog_data_age){
+if(file.info("timelog_with_status.Rda")$mtime > sf_timelog_data_age &
+     file.info("timelog_with_status.Rda")$mtime > oa_timelog_data_age){
   print("no change in timelog data, loading historical info")
+  print(paste("timelog_with_status.Rda", "last updated", round(difftime(Sys.time(), file.info("timelog_with_status.Rda")$mtime, units = "days"), digits = 1), "days ago", sep = " "))
   timelog_with_status_df <- readRDS(file = "timelog_with_status.Rda")
 }else{
   ptm <- proc.time()
@@ -46,12 +49,19 @@ if(file.info("timelog_with_status.Rda")$mtime > timelog_data_age){
   timelog_with_status_df[timelog_with_status_df$User %in% "Jane Cavanaugh" & timelog_with_status_df$monthyear %in% c("14-09", "14-10", "14-11"),]$role <- "PSS"
   timelog_with_status_df[timelog_with_status_df$User.Title %in% "Professional Services Intern",]$role <- "Intern"
   timelog_with_status_df[timelog_with_status_df$role %in% c("PSS", "Intern"),]$is_psm <- 1
-  timelog_with_status_df[timelog_with_status_df$role %in% c("Sr. PSM"),]$role <- "Sr PSM"
-  timelog_with_status_df[timelog_with_status_df$role %in% c("PSM Team Manager"),]$role <- "TM"
+  
+  if(length(timelog_with_status_df[timelog_with_status_df$role %in% c("Sr. PSM"),]$role) < 0){
+    timelog_with_status_df[timelog_with_status_df$role %in% c("Sr. PSM"),]$role <- "Sr PSM"
+  }
+  if(length(timelog_with_status_df[timelog_with_status_df$role %in% c("PSM Team Manager"),]$role) < 0){
+    timelog_with_status_df[timelog_with_status_df$role %in% c("PSM Team Manager"),]$role <- "TM"  
+  }
+  
   
   timelog_with_status_df <- timelog_with_status_df[order(timelog_with_status_df$Date),]
   setwd("c:/r/workspace/42/datastore")
   saveRDS(timelog_with_status_df, file = "timelog_with_status.Rda")
+  print(paste("timelog_with_status.Rda", "last updated", round(difftime(Sys.time(), file.info("timelog_with_status.Rda")$mtime, units = "days"), digits = 1), "days ago", sep = " "))
 }
 
 #peel off and remove non-ps time
@@ -410,8 +420,23 @@ churned[churned$quarter %in% "NA-QNA",]$quarter <- NA
 churned[grepl("Acquired", churned$Churned.Detail, ignore.case = T),]$Churned.Detail <- "Acquired"
 churned[grepl("Went Private", churned$Churned.Detail, ignore.case = T),]$Churned.Detail <- "Went Private"
 churned[churned$Churned.Detail %in% c("Delinquent/Bankrupt", "Delayed IPO"),]$Churned.Detail <- "Other"
+churned[churned$Churned.Detail %in% c("Software Issue", "Wdesk Issues"),]$Churned.Detail <- "Wdesk Issues"
 
 churned_result <- dcast(churned, Churned.Detail ~ quarter, length, value.var = "Account.ID")
+
+#////////////////////////////////
+# Averages by service and form type
+#////////////////////////////////
+service_averages <- collapsed_time()
+service_averages_by_quarter <- ddply(service_averages[!is.na(service_averages$Hours),], 
+                                     .var = c("Service.Type", "Form.Type", "reportingPeriod"), .fun = function(x){
+                                       data.frame(mean = mean(x$Hours),
+                                                  n = length(x$Hours))  
+                                     })
+service_averages_by_quarter_long <- melt(service_averages_by_quarter, id=c("Service.Type", "Form.Type", "reportingPeriod"))
+service_averages_by_quarter_long$header <- paste(service_averages_by_quarter_long$reportingPeriod, service_averages_by_quarter_long$variable, sep = "\n")
+service_averages_by_quarter_wide <- dcast(service_averages_by_quarter_long, Service.Type + Form.Type ~ header, sum, value.var = c("value"))
+
 
 #****************** write results to file
 setwd("C:/R/workspace/42/output")
@@ -426,6 +451,7 @@ write.xlsx(x = discount_groups_wide, file = "42_data.xlsx",sheetName = "services
 write.xlsx(x = full_discount_wide, file = "42_data.xlsx",sheetName = "Full discount", row.names = FALSE, append = TRUE)
 write.xlsx(x = discount_20_to_99_wide, file = "42_data.xlsx",sheetName = "20-99 discount", row.names = FALSE, append = TRUE)
 write.xlsx(x = churned_result, file = "42_data.xlsx",sheetName = "churned", row.names = FALSE, append = TRUE)
+write.xlsx(x = service_averages_by_quarter_wide, file = "42_data.xlsx",sheetName = "service averages", row.names = FALSE, append = TRUE)
 # write.xlsx(x = wide_goodwill_used, file = "42_data.xlsx",sheetName = "Goodwill Hours Used", row.names = FALSE, append = TRUE)
 # write.xlsx(x = goodwill_balance, file = "42_data.xlsx",sheetName = "Goodwill Balance", row.names = FALSE, append = TRUE)
 
