@@ -16,6 +16,7 @@ library(xlsx)
 setwd("C:/R/workspace/shared")
 source("import_functions.r")
 source("transformations.r")
+source("helpers.R")
 
 #////////////////////////////////
 # Billable Hours by xbrl status
@@ -428,15 +429,38 @@ churned_result <- dcast(churned, Churned.Detail ~ quarter, length, value.var = "
 # Averages by service and form type
 #////////////////////////////////
 service_averages <- collapsed_time()
-service_averages_by_quarter <- ddply(service_averages[!is.na(service_averages$Hours),], 
+previous_filing_period <- paste(as.numeric(format((Sys.Date() - 90), "%Y")), ceiling(as.numeric(format((Sys.Date() - 90), "%m"))/3), sep = "")
+one_year_ago_period <- paste(as.numeric(format((Sys.Date() - 365), "%Y")), ceiling(as.numeric(format((Sys.Date() - 365), "%m"))/3), sep = "")
+
+#limit to completed quarters
+service_averages <- service_averages[service_averages$filingPeriod <= previous_filing_period,] 
+service_averages_by_quarter <- ddply(service_averages[!is.na(service_averages$Hours)
+                                                        !service_averages$Service.Type %in% c("Reserve Hours", "Rush Charges", "Migration"),], 
                                      .var = c("Service.Type", "Form.Type", "reportingPeriod"), .fun = function(x){
                                        data.frame(mean = mean(x$Hours),
+                                                  median = median(x$Hours),
                                                   n = length(x$Hours))  
+                                     })
+service_averages_past_year <- ddply(service_averages[!is.na(service_averages$Hours) &
+                                                       service_averages$filingPeriod %in% sequence_yearquarters(one_year_ago_period, previous_filing_period, 1) &
+                                                        !service_averages$Service.Type %in% c("Reserve Hours", "Rush Charges", "Migration"),], 
+                                     .var = c("Service.Type", "Form.Type"), .fun = function(x){
+                                       data.frame(annual_mean_all = mean(x$Hours),
+                                                  annual_median_all = median(x$Hours),
+                                                  annual_n_all = length(x$Hours),
+                                                  annual_mean_psm = mean(x$PSM.Hours),
+                                                  annual_median_psm = median(x$PSM.Hours),
+                                                  annual_n_psm = length(x$PSM.Hours))  
                                      })
 service_averages_by_quarter_long <- melt(service_averages_by_quarter, id=c("Service.Type", "Form.Type", "reportingPeriod"))
 service_averages_by_quarter_long$header <- paste(service_averages_by_quarter_long$reportingPeriod, service_averages_by_quarter_long$variable, sep = "\n")
-service_averages_by_quarter_wide <- dcast(service_averages_by_quarter_long, Service.Type + Form.Type ~ header, sum, value.var = c("value"))
+service_averages_by_quarter_long$reportingPeriod <- NULL
+service_averages_past_year_long <- melt(service_averages_past_year, id=c("Service.Type", "Form.Type"))
+service_averages_past_year_long$header <- service_averages_past_year_long$variable
+service_averages_by_quarter_long <- rbind(service_averages_by_quarter_long, service_averages_past_year_long)
 
+service_averages_by_quarter_wide <- dcast(service_averages_by_quarter_long, Service.Type + Form.Type ~ header, sum, value.var = c("value"))
+service_averages_by_quarter_wide <- service_averages_by_quarter_wide[,names(service_averages_by_quarter_wide)[rev(order(names(service_averages_by_quarter_wide)))]]
 
 #****************** write results to file
 setwd("C:/R/workspace/42/output")
