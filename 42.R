@@ -434,7 +434,7 @@ one_year_ago_period <- paste(as.numeric(format((Sys.Date() - 365), "%Y")), ceili
 
 #limit to completed quarters
 service_averages <- service_averages[service_averages$filingPeriod <= previous_filing_period,] 
-service_averages_by_quarter <- ddply(service_averages[!is.na(service_averages$Hours)
+service_averages_by_quarter <- ddply(service_averages[!is.na(service_averages$Hours) &
                                                         !service_averages$Service.Type %in% c("Reserve Hours", "Rush Charges", "Migration"),], 
                                      .var = c("Service.Type", "Form.Type", "reportingPeriod"), .fun = function(x){
                                        data.frame(mean = mean(x$Hours),
