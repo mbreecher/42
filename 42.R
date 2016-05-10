@@ -2,7 +2,6 @@
 #dependencies:
 #time_entry_detail_report__complete_report.csv
 #services_for_ps_history_R.csv
-#ps_start_dates.csv
 #opportunities_for_R.csv
 #accounts_with_year_end.csv
 #contracts_for_pshistory.csv
@@ -17,6 +16,7 @@ setwd("C:/R/workspace/shared")
 source("import_functions.r")
 source("transformations.r")
 source("helpers.R")
+
 
 #////////////////////////////////
 # Billable Hours by xbrl status
@@ -43,21 +43,8 @@ if(file.info("timelog_with_status.Rda")$mtime > sf_timelog_data_age &
 }else{
   ptm <- proc.time()
   print("updated timelog data available, processing...")
-  timelog_with_status_df <- timelog_with_status(include_cs = T) #~12 minutes
+  timelog_with_status_df <- timelog_with_status(include_cs = T) #~22 minutes
   print(proc.time() - ptm)
-  
-  #manual processing of roles
-  timelog_with_status_df[timelog_with_status_df$User %in% "Jane Cavanaugh" & timelog_with_status_df$monthyear %in% c("14-09", "14-10", "14-11"),]$role <- "PSS"
-  timelog_with_status_df[timelog_with_status_df$User.Title %in% "Professional Services Intern",]$role <- "Intern"
-  timelog_with_status_df[timelog_with_status_df$role %in% c("PSS", "Intern"),]$is_psm <- 1
-  
-  if(length(timelog_with_status_df[timelog_with_status_df$role %in% c("Sr. PSM"),]$role) < 0){
-    timelog_with_status_df[timelog_with_status_df$role %in% c("Sr. PSM"),]$role <- "Sr PSM"
-  }
-  if(length(timelog_with_status_df[timelog_with_status_df$role %in% c("PSM Team Manager"),]$role) < 0){
-    timelog_with_status_df[timelog_with_status_df$role %in% c("PSM Team Manager"),]$role <- "TM"  
-  }
-  
   
   timelog_with_status_df <- timelog_with_status_df[order(timelog_with_status_df$Date),]
   setwd("c:/r/workspace/42/datastore")
@@ -247,7 +234,7 @@ if(file.info("filing_and_customer.Rda")$mtime > filings_data_age){
       status = "Full Service"
     }else if(TRUE %in% (time_cust$Service.Type %in% c("Maintenance Package", "Maintenance"))){
       status = "Basic"
-    }else if(TRUE %in% (time_cust$Service.Type %in% c("Reserve Hours", "Other"))){
+    }else if(TRUE %in% (time_cust$Service.Type %in% c("Reserve Hours", "Other", "Hourly Service", "Rush Charges"))){
       status = "DIY w/ hours"
     }else{
       status = "Inactive DIY"
@@ -269,7 +256,7 @@ if(file.info("filing_and_customer.Rda")$mtime > filings_data_age){
       status = "Full Service "
     }else if(TRUE %in% (time_reg$Service.Type %in% c("Maintenance Package", "Maintenance"))){
       status = "Basic "
-    }else if(TRUE %in% (time_reg$Service.Type %in% c("Reserve Hours", "Other"))){
+    }else if(TRUE %in% (time_reg$Service.Type %in% c("Reserve Hours", "Other", "Hourly Service"))){
       status = "DIY w/ hours "
     }else{
       status = "Inactive DIY "
@@ -304,8 +291,12 @@ if(file.info("filing_and_customer.Rda")$mtime > filings_data_age){
 # Net discounted sales price
 #////////////////////////////////
 collapsed_opps <- collapsed_opportunities() # ~2.75 minutes
+collapsed_opps <- collapsed_opps[!is.na(collapsed_opps$Sales.Price),]
 collapsed_opps <- collapsed_opps[collapsed_opps$filing.estimate > "2013-06-30",]
 collapsed_opps <- collapsed_opps[order(collapsed_opps$filing.estimate),]
+
+collapsed_opps[collapsed_opps$Service.Type %in% c("Detail Tagging", "Full Service Roll Forward") &
+                 collapsed_opps$Form.Type %in% "Q-K",]$Form.Type <- "10-K"
 
 #make list price sales price if list price == 0 or na
 collapsed_opps[collapsed_opps$List.Price %in% 0 | is.na(collapsed_opps$List.Price),]$List.Price <- collapsed_opps[collapsed_opps$List.Price %in% 0  | is.na(collapsed_opps$List.Price),]$Sales.Price
@@ -428,29 +419,26 @@ churned_result <- dcast(churned, Churned.Detail ~ quarter, length, value.var = "
 #////////////////////////////////
 # Averages by service and form type
 #////////////////////////////////
-service_averages <- collapsed_time()
+service_averages <- collapsed_time_simple()
 previous_filing_period <- paste(as.numeric(format((Sys.Date() - 90), "%Y")), ceiling(as.numeric(format((Sys.Date() - 90), "%m"))/3), sep = "")
 one_year_ago_period <- paste(as.numeric(format((Sys.Date() - 365), "%Y")), ceiling(as.numeric(format((Sys.Date() - 365), "%m"))/3), sep = "")
 
 #limit to completed quarters
 service_averages <- service_averages[service_averages$filingPeriod <= previous_filing_period,] 
 service_averages_by_quarter <- ddply(service_averages[!is.na(service_averages$Hours) &
-                                                        !service_averages$Service.Type %in% c("Reserve Hours", "Rush Charges", "Migration"),], 
+                                                        !service_averages$Service.Type %in% c("Reserve Hours", "Rush Charges", "Migration", "Hourly Service"),], 
                                      .var = c("Service.Type", "Form.Type", "reportingPeriod"), .fun = function(x){
                                        data.frame(mean = mean(x$Hours),
                                                   median = median(x$Hours),
                                                   n = length(x$Hours))  
                                      })
 service_averages_past_year <- ddply(service_averages[!is.na(service_averages$Hours) &
-                                                       service_averages$filingPeriod %in% sequence_yearquarters(one_year_ago_period, previous_filing_period, 1) &
-                                                        !service_averages$Service.Type %in% c("Reserve Hours", "Rush Charges", "Migration"),], 
+                                                       service_averages$filingPeriod %in% sequence_yearquarters(one_year_ago_period, previous_filing_period) &
+                                                        !service_averages$Service.Type %in% c("Reserve Hours", "Rush Charges", "Migration", "Hourly Service"),], 
                                      .var = c("Service.Type", "Form.Type"), .fun = function(x){
                                        data.frame(annual_mean_all = mean(x$Hours),
                                                   annual_median_all = median(x$Hours),
-                                                  annual_n_all = length(x$Hours),
-                                                  annual_mean_psm = mean(x$PSM.Hours),
-                                                  annual_median_psm = median(x$PSM.Hours),
-                                                  annual_n_psm = length(x$PSM.Hours))  
+                                                  annual_n_all = length(x$Hours))  
                                      })
 service_averages_by_quarter_long <- melt(service_averages_by_quarter, id=c("Service.Type", "Form.Type", "reportingPeriod"))
 service_averages_by_quarter_long$header <- paste(service_averages_by_quarter_long$reportingPeriod, service_averages_by_quarter_long$variable, sep = "\n")
@@ -461,6 +449,32 @@ service_averages_by_quarter_long <- rbind(service_averages_by_quarter_long, serv
 
 service_averages_by_quarter_wide <- dcast(service_averages_by_quarter_long, Service.Type + Form.Type ~ header, sum, value.var = c("value"))
 service_averages_by_quarter_wide <- service_averages_by_quarter_wide[,names(service_averages_by_quarter_wide)[rev(order(names(service_averages_by_quarter_wide)))]]
+
+#PSM Hour averages
+psm_service_averages_by_quarter <- ddply(service_averages[!is.na(service_averages$PSM.Hours) &
+                                                        !service_averages$Service.Type %in% c("Reserve Hours", "Rush Charges", "Migration", "Hourly Service"),], 
+                                     .var = c("Service.Type", "Form.Type", "reportingPeriod"), .fun = function(x){
+                                       data.frame(mean = mean(x$PSM.Hours),
+                                                  median = median(x$PSM.Hours),
+                                                  n = length(x$PSM.Hours))  
+                                     })
+psm_service_averages_past_year <- ddply(service_averages[!is.na(service_averages$PSM.Hours) &
+                                                       service_averages$filingPeriod %in% sequence_yearquarters(one_year_ago_period, previous_filing_period) &
+                                                       !service_averages$Service.Type %in% c("Reserve Hours", "Rush Charges", "Migration", "Hourly Service"),], 
+                                    .var = c("Service.Type", "Form.Type"), .fun = function(x){
+                                      data.frame(annual_mean_psm = mean(x$PSM.Hours),
+                                                 annual_median_psm = median(x$PSM.Hours),
+                                                 annual_n_psm = length(x$PSM.Hours))  
+                                    })
+psm_service_averages_by_quarter_long <- melt(psm_service_averages_by_quarter, id=c("Service.Type", "Form.Type", "reportingPeriod"))
+psm_service_averages_by_quarter_long$header <- paste(psm_service_averages_by_quarter_long$reportingPeriod, psm_service_averages_by_quarter_long$variable, sep = "\n")
+psm_service_averages_by_quarter_long$reportingPeriod <- NULL
+psm_service_averages_past_year_long <- melt(psm_service_averages_past_year, id=c("Service.Type", "Form.Type"))
+psm_service_averages_past_year_long$header <- psm_service_averages_past_year_long$variable
+psm_service_averages_by_quarter_long <- rbind(psm_service_averages_by_quarter_long, psm_service_averages_past_year_long)
+
+psm_service_averages_by_quarter_wide <- dcast(psm_service_averages_by_quarter_long, Service.Type + Form.Type ~ header, sum, value.var = c("value"))
+psm_service_averages_by_quarter_wide <- psm_service_averages_by_quarter_wide[,names(psm_service_averages_by_quarter_wide)[rev(order(names(psm_service_averages_by_quarter_wide)))]]
 
 #****************** write results to file
 setwd("C:/R/workspace/42/output")
@@ -475,7 +489,8 @@ write.xlsx(x = discount_groups_wide, file = "42_data.xlsx",sheetName = "services
 write.xlsx(x = full_discount_wide, file = "42_data.xlsx",sheetName = "Full discount", row.names = FALSE, append = TRUE)
 write.xlsx(x = discount_20_to_99_wide, file = "42_data.xlsx",sheetName = "20-99 discount", row.names = FALSE, append = TRUE)
 write.xlsx(x = churned_result, file = "42_data.xlsx",sheetName = "churned", row.names = FALSE, append = TRUE)
-write.xlsx(x = service_averages_by_quarter_wide, file = "42_data.xlsx",sheetName = "service averages", row.names = FALSE, append = TRUE)
+write.xlsx(x = service_averages_by_quarter_wide, file = "42_data.xlsx",sheetName = "service averages - All PS", row.names = FALSE, append = TRUE)
+write.xlsx(x = psm_service_averages_by_quarter_wide, file = "42_data.xlsx",sheetName = "service averages - PSM", row.names = FALSE, append = TRUE)
 # write.xlsx(x = wide_goodwill_used, file = "42_data.xlsx",sheetName = "Goodwill Hours Used", row.names = FALSE, append = TRUE)
 # write.xlsx(x = goodwill_balance, file = "42_data.xlsx",sheetName = "Goodwill Balance", row.names = FALSE, append = TRUE)
 
