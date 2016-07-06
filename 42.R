@@ -186,106 +186,104 @@ names(time_by_role) <- monthyear_to_written(names(time_by_role))
 
 #conditionally bypass this block when stored data is newer than the source
 setwd("c:/r/workspace/source")
-filings_data_age <- file.info('app_filings.Rda')$mtime
-setwd("c:/r/workspace/42/datastore")
 
-if(file.info("filing_and_customer.Rda")$mtime > filings_data_age){
-  print("no change in filing data, loading historical info")
-  filing_and_customer <- readRDS(file = "filing_and_customer.Rda")
-}else{
-  print("newer filing data available, importing and processing...")
-  app_data <- load_app_filing_data()
-  app_data <- app_data[!is.na(app_data$Fact.Cnt),]
-  app_data <- app_data[app_data$Form.Type %in% c("10-Q", "10-K", "10-K/A", "10-Q/A"),] #limit to form 10
-  app_data$software <- "WebFilings"
-  app_data_uniques <- unique(app_data[names(app_data) %in% c("Registrant.CIK", "monthyear", "software")])
-  app_data_wide <- dcast(app_data_uniques, software ~ monthyear, length, value.var = "Registrant.CIK")
-  names(app_data_wide) <- monthyear_to_written(names(app_data_wide))
-  app_data_wide
-  
-  # filing_and_customer: xbrl customers
-  customers <- unique(app_data[names(app_data) %in% c("Company.Name", "monthyear", "software")])
-  customers_wide <- dcast(customers, software ~ monthyear, length, value.var = "Company.Name")
-  names(customers_wide) <- monthyear_to_written(names(customers_wide))
-  customers_wide
-  
-  customer_counts <- rbind(app_data_wide, customers_wide)
-  row.names(customer_counts) <- c("Registrants", "Customers")
-  customer_counts <- customer_counts[,-1]
-  
-  # filing_and_customer: filing counts
-  filings_wide <- dcast(app_data, Form.Type ~ monthyear, length, value.var = "Accession.Number")
-  row.names(filings_wide) <- filings_wide$Form.Type
-  filings_wide <- filings_wide[,-1]
-  names(filings_wide) <- monthyear_to_written(names(filings_wide))
-  
-  # xbrl status by monthly filers ~ 18.5 minutes
-  ptm <- proc.time()
+app_data <- load_app_filing_data()
+app_data <- app_data[!is.na(app_data$Fact.Cnt),]
+app_data <- app_data[app_data$Form.Type %in% c("10-Q", "10-K", "10-K/A", "10-Q/A"),] #limit to form 10
+app_data$software <- "WebFilings"
+app_data_uniques <- unique(app_data[names(app_data) %in% c("Registrant.CIK", "monthyear", "software")])
+app_data_wide <- dcast(app_data_uniques, software ~ monthyear, length, value.var = "Registrant.CIK")
+names(app_data_wide) <- monthyear_to_written(names(app_data_wide))
 
-  app_data_cust_status <- ddply(app_data, .var = c("Company.Name", "monthyear"), .fun = function(x){
-    status = NA
-    time_cust <- timelog_with_status_df[timelog_with_status_df$Account.Name %in% x$Company.Name &
-                                          timelog_with_status_df$is_psm %in% 1 &
-                                          timelog_with_status_df$Date <= max(x$Filing.Date) &
-                                          timelog_with_status_df$Date >= min(x$Filing.Date) - 45,]
-    if(dim(time_cust)[1] == 0){
-      status = "Inactive DIY"
-    }else if(TRUE %in% (time_cust$Service.Type %in% c("Roll Forward","Standard Import","Detail Tagging","Full Service Roll Forward","Full Service Standard Import"))){
-      status = "Full Service"
-    }else if(TRUE %in% (time_cust$Service.Type %in% c("Maintenance Package", "Maintenance"))){
-      status = "Basic"
-    }else if(TRUE %in% (time_cust$Service.Type %in% c("Reserve Hours", "Other", "Hourly Service", "Rush Charges"))){
-      status = "DIY w/ hours"
-    }else{
-      status = "Inactive DIY"
-    }
-    data.frame(customer_status = status)
-  }) # 4.5 minutes
-  proc.time() - ptm
-  app_data_reg_status <- ddply(app_data, .var = c("Registrant.CIK", "monthyear"), .fun = function(x){
-    status = NA
-    
-    time_reg <- timelog_with_status_df[timelog_with_status_df$CIK %in% x$Registrant.CIK &
-                                         timelog_with_status_df$is_psm %in% 1 &
-                                          timelog_with_status_df$Date <= max(x$Filing.Date) &
-                                          timelog_with_status_df$Date >= min(x$Filing.Date) - 45,]
-  
-    if(dim(time_reg)[1] == 0){
-      status = "Inactive DIY "
-    }else if(TRUE %in% (time_reg$Service.Type %in% c("Roll Forward","Standard Import","Detail Tagging","Full Service Roll Forward","Full Service Standard Import"))){
-      status = "Full Service "
-    }else if(TRUE %in% (time_reg$Service.Type %in% c("Maintenance Package", "Maintenance"))){
-      status = "Basic "
-    }else if(TRUE %in% (time_reg$Service.Type %in% c("Reserve Hours", "Other", "Hourly Service"))){
-      status = "DIY w/ hours "
-    }else{
-      status = "Inactive DIY "
-    }
-    data.frame(registrant_status = status)
-  })
-  
-  proc.time() - ptm
-  cust_uniques <- unique(app_data_cust_status[names(app_data_cust_status) %in% c("Company.Name", "monthyear", "customer_status")])
-  reg_uniques <- unique(app_data_reg_status[names(app_data_reg_status) %in% c("Registrant.CIK", "monthyear", "registrant_status")])
-  customer_by_status <- dcast(cust_uniques, customer_status ~ monthyear, length, value.var = "Company.Name")
-  names(customer_by_status) <- monthyear_to_written(names(customer_by_status))
-  row.names(customer_by_status) <- customer_by_status$customer_status
-  customer_by_status <- customer_by_status[,-1]
-  customer_by_status <- customer_by_status[match(c("Full Service", "Basic", "DIY w/ hours", "Inactive DIY"), rownames(customer_by_status)),]
-  registrants_by_status <- dcast(reg_uniques, registrant_status ~ monthyear, length, value.var = "Registrant.CIK")
-  names(registrants_by_status) <- monthyear_to_written(names(registrants_by_status))
-  row.names(registrants_by_status) <- registrants_by_status$registrant_status
-  registrants_by_status <- registrants_by_status[,-1]
-  registrants_by_status <- registrants_by_status[match(c("Full Service ", "Basic ", "DIY w/ hours ", "Inactive DIY "), rownames(registrants_by_status)),]
-  
-  # combine filing and customer count info for filing and customer data tab
-  space <- rep("", dim(customer_counts)[1])
-  filing_and_customer <- rbind(customer_counts, space, filings_wide,space, registrants_by_status,space, customer_by_status)
-  row.names(filing_and_customer) <- c(row.names(customer_counts), "by form", row.names(filings_wide), "registrants", row.names(registrants_by_status), "wDesk accounts", row.names(customer_by_status))
+# filing_and_customer: xbrl customers
+customers <- unique(app_data[names(app_data) %in% c("Company.Name", "monthyear", "software")])
+customers_wide <- dcast(customers, software ~ monthyear, length, value.var = "Company.Name")
+names(customers_wide) <- monthyear_to_written(names(customers_wide))
 
-  setwd("c:/r/workspace/42/datastore")
-  saveRDS(filing_and_customer, file = "filing_and_customer.Rda")
+customer_counts <- rbind(app_data_wide, customers_wide)
+row.names(customer_counts) <- c("Registrants", "Customers")
+customer_counts <- customer_counts[,-1]
+
+# filing_and_customer: filing counts
+filings_wide <- dcast(app_data, Form.Type ~ monthyear, length, value.var = "Accession.Number")
+row.names(filings_wide) <- filings_wide$Form.Type
+filings_wide <- filings_wide[,-1]
+names(filings_wide) <- monthyear_to_written(names(filings_wide))
+
+# xbrl status by monthly filers ~ 18.5 minutes
+ptm <- proc.time()
+
+app_data_cust_status <- ddply(app_data, .var = c("Company.Name", "monthyear"), .fun = function(x){
+  status = NA
+  time_cust <- timelog_with_status_df[timelog_with_status_df$Account.Name %in% x$Company.Name &
+                                        timelog_with_status_df$is_psm %in% 1 &
+                                        timelog_with_status_df$Date <= max(x$Filing.Date) &
+                                        timelog_with_status_df$Date >= min(x$Filing.Date) - 45,]
+  if(dim(time_cust)[1] == 0){
+    status = "Inactive DIY"
+  }else if(TRUE %in% (time_cust$Service.Type %in% c("Roll Forward","Standard Import","Detail Tagging","Full Service Roll Forward","Full Service Standard Import"))){
+    status = "Full Service"
+  }else if(TRUE %in% (time_cust$Service.Type %in% c("Maintenance Package", "Maintenance"))){
+    status = "Basic"
+  }else if(TRUE %in% (time_cust$Service.Type %in% c("Reserve Hours", "Other", "Hourly Service", "Rush Charges"))){
+    status = "DIY w/ hours"
+  }else{
+    status = "Inactive DIY"
+  }
+  data.frame(customer_status = status)
+}) # 4.5 minutes
+proc.time() - ptm
+
+app_data_reg_status <- c()
+
+for(i in 1:dim(unique(app_data[,names(app_data) %in% c("Registrant.CIK", "monthyear")]))[1]){
+  reg <- unique(app_data[,names(app_data) %in% c("Registrant.CIK", "monthyear")])[i,]$Registrant.CIK
+  my <- unique(app_data[,names(app_data) %in% c("Registrant.CIK", "monthyear")])[i,]$monthyear
+  
+  dates <- app_data[app_data$Registrant.CIK %in% reg & app_data$monthyear %in% my,]$Filing.Date
+  
+  status = NA
+  
+  time_reg <- timelog_with_status_df[timelog_with_status_df$CIK %in% reg &
+                                       timelog_with_status_df$is_psm %in% 1 &
+                                       timelog_with_status_df$Date <= max(dates) &
+                                       timelog_with_status_df$Date >= min(dates) - 45,]
+  
+  if(dim(time_reg)[1] == 0){
+    status = "Inactive DIY "
+  }else if(TRUE %in% (time_reg$Service.Type %in% c("Roll Forward","Standard Import","Detail Tagging","Full Service Roll Forward","Full Service Standard Import"))){
+    status = "Full Service "
+  }else if(TRUE %in% (time_reg$Service.Type %in% c("Maintenance Package", "Maintenance"))){
+    status = "Basic "
+  }else if(TRUE %in% (time_reg$Service.Type %in% c("Reserve Hours", "Other", "Hourly Service"))){
+    status = "DIY w/ hours "
+  }else{
+    status = "Inactive DIY "
+  }
+  app_data_reg_status <- rbind(app_data_reg_status_alt, data.frame(Registrant.CIK = reg,
+                                                                   monthyear = my,
+                                                                   registrant_status = status, stringsAsFactors=FALSE))
 }
+
+
+proc.time() - ptm
+cust_uniques <- unique(app_data_cust_status[names(app_data_cust_status) %in% c("Company.Name", "monthyear", "customer_status")])
+reg_uniques <- unique(app_data_reg_status[names(app_data_reg_status) %in% c("Registrant.CIK", "monthyear", "registrant_status")])
+customer_by_status <- dcast(cust_uniques, customer_status ~ monthyear, length, value.var = "Company.Name")
+names(customer_by_status) <- monthyear_to_written(names(customer_by_status))
+row.names(customer_by_status) <- customer_by_status$customer_status
+customer_by_status <- customer_by_status[,-1]
+customer_by_status <- customer_by_status[match(c("Full Service", "Basic", "DIY w/ hours", "Inactive DIY"), rownames(customer_by_status)),]
+registrants_by_status <- dcast(reg_uniques, registrant_status ~ monthyear, length, value.var = "Registrant.CIK")
+names(registrants_by_status) <- monthyear_to_written(names(registrants_by_status))
+row.names(registrants_by_status) <- registrants_by_status$registrant_status
+registrants_by_status <- registrants_by_status[,-1]
+registrants_by_status <- registrants_by_status[match(c("Full Service ", "Basic ", "DIY w/ hours ", "Inactive DIY "), rownames(registrants_by_status)),]
+
+# combine filing and customer count info for filing and customer data tab
+space <- rep("", dim(customer_counts)[1])
+filing_and_customer <- rbind(customer_counts, space, filings_wide,space, registrants_by_status,space, customer_by_status)
+row.names(filing_and_customer) <- c(row.names(customer_counts), "by form", row.names(filings_wide), "registrants", row.names(registrants_by_status), "wDesk accounts", row.names(customer_by_status))
 
 #////////////////////////////////
 # Net discounted sales price
@@ -498,3 +496,19 @@ proc.time() - start
 
 #rbind results
 #test <- rbind.fill(billable_hours, project_hours, scheduled_services, count_by_role, time_by_role)
+
+# # send out as email
+# setwd("C:/r/workspace/shared/")
+# source("mail.R")
+# file <- "C:/R/workspace/42/output/42_data.xlsx"
+# email_list <- c("mike.breecher@workiva.com")
+# subject <- "42 Report"
+# message <- "
+# Team,
+# 
+# See the attached 42 report
+# 
+# Regards,
+# "
+# 
+# send_mail(email_list, subject, message, file)
