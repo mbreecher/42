@@ -260,7 +260,7 @@ for(i in 1:dim(unique(app_data[,names(app_data) %in% c("Registrant.CIK", "monthy
   }else{
     status = "Inactive DIY "
   }
-  app_data_reg_status <- rbind(app_data_reg_status_alt, data.frame(Registrant.CIK = reg,
+  app_data_reg_status <- rbind(app_data_reg_status, data.frame(Registrant.CIK = reg,
                                                                    monthyear = my,
                                                                    registrant_status = status, stringsAsFactors=FALSE))
 }
